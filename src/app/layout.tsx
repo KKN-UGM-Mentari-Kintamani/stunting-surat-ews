@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Literata, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
+import { AppShell } from "@/components/layout/app-shell";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 // Design §2: max 2 families, max 2 weights each, swap, latin subset only.
 const literata = Literata({
   variable: "--font-literata",
@@ -41,7 +45,10 @@ export default function RootLayout({
       className={`${literata.variable} ${jakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <TooltipProvider>
+          <AppShell>{children}</AppShell>
+        </TooltipProvider>
+        <Toaster position="top-center" richColors={false} />
       </body>
     </html>
   );
