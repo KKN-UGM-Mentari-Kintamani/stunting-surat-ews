@@ -1,26 +1,122 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Design tokens — Integrated Village Portal (Design.md Appendix).
+ * Light-only palette per Design.md §0/§10 ("paper" warmth, calm not clinical).
+ * Phase 3 EWS tokens (--alert-*) are RESERVED — do not use before EWS is active.
+ */
+@theme inline {
+  /* shadcn semantic mapping → village tokens */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--growth-green);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--official-blue);
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #f5f1e7;
+  --color-muted-foreground: rgba(43, 40, 35, 0.7); /* --ink at 70% (helper text, Design §6.2) */
+  --color-accent: #eef1f4;
+  --color-accent-foreground: var(--official-blue);
+  --color-destructive: var(--stamp-red);
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e7e1d3; /* card hairline (Design §4) */
+  --color-input: #e7e1d3;
+  --color-ring: var(--official-blue);
+
+  /* Brand core (Design §1.1) */
+  --color-growth-green: var(--growth-green);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-gold-header: var(--gold-header);
+  --color-official-blue: var(--official-blue);
+  --color-stamp-red: var(--stamp-red);
+
+  /* Health status (Design §1.2) — pastel, calm */
+  --color-status-normal-bg: #e3f6ed;
+  --color-status-normal-fg: #2f6b4f;
+  --color-status-mild-bg: #fff3d9;
+  --color-status-mild-fg: #8a6116;
+  --color-status-high-bg: #fde4e1;
+  --color-status-high-fg: #9c3b33;
+
+  /* Letter status (Design §1.3) — reserved for Phase 2 */
+  --color-status-waiting-bg: #eef1f4;
+  --color-status-waiting-fg: #51606e;
+  --color-status-revision-bg: #f5e9d3;
+  --color-status-revision-fg: #8a6116;
+  --color-status-rejected-bg: #f7e3e1;
+  --color-status-rejected-fg: #a13d3d;
+
+  /* RESERVED for Phase 3 EWS (Design §1.4) — locked, do not use */
+  --color-alert-yellow: #f5b700;
+  --color-alert-red: #d62828;
+
+  /* Radius (Design §4): sm 8 / md 14 / lg 24 / pill 999 */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-pill: 999px;
+
+  /* Typography (Design §2) */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-literata), ui-serif, Georgia, serif;
+}
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --growth-green: #2f6b4f;
+  --paper: #fbf8f1;
+  --ink: #2b2823;
+  --gold-header: #a9762e;
+  --official-blue: #35526e;
+  --stamp-red: #a13d3d;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    /* Flat "paper" elevation: no heavy shadows anywhere (Design §4). */
+  }
+  h1,
+  h2 {
+    @apply font-display;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Tabular numerals for data (Z-scores, letter numbers, dates — Design §2). */
+@utility tabular-data {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Result reveal (Design §7): light fade+slide, respects reduced motion. */
+@keyframes result-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-result-reveal {
+  animation: result-reveal 150ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-result-reveal {
+    animation: none;
+  }
 }
