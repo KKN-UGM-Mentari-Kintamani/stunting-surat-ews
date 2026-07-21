@@ -77,13 +77,9 @@ export function ResultSection({
         />
       </Reveal>
 
+      {/* Action row sits between clinical details and recommendations, right-aligned. */}
       <Reveal delay={320}>
-        <RecommendationCards ageMonths={ageMonths} />
-      </Reveal>
-
-      <Reveal delay={400}>
-        <div className="flex flex-wrap items-center gap-3">
-          <SaveHistoryButton isLoggedIn={isLoggedIn} />
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <button
             type="button"
             onClick={onReset}
@@ -91,7 +87,12 @@ export function ResultSection({
           >
             Hitung ulang
           </button>
+          <SaveHistoryButton isLoggedIn={isLoggedIn} />
         </div>
+      </Reveal>
+
+      <Reveal delay={400}>
+        <RecommendationCards ageMonths={ageMonths} />
       </Reveal>
     </section>
   );

@@ -1,11 +1,14 @@
 /* src/components/calculator/recommendation-cards.tsx
- * 3 contextual MPASI/nutrition cards filtered to the child's age bucket
- * (PRD §4.2B). Until the /edukasi CMS exists (later stage), these are static
- * placeholder cards that link to /edukasi — preserves the home page's PRD
- * structure so swapping in live data later is a data-only change.
+ * Contextual recommendations (PRD §4.2A / §4.2B), split into two tracks that
+ * follow the child's age bucket:
+ *   - Artikel Gizi   (general nutrition articles)
+ *   - Resep MPASI    (complementary feeding recipes)
+ * Until the /edukasi CMS exists (later stage) these are static placeholder
+ * cards linked to /edukasi — preserves the home page's PRD structure so
+ * swapping in live data later is a data-only change (no JSX edit).
  */
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpenText, CookingPot } from "lucide-react";
 
 import {
   AGE_BUCKET_LABEL,
@@ -20,12 +23,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-interface PlaceholderArticle {
+interface Item {
   title: string;
   body: string;
 }
 
-const SAMPLE: Record<AgeBucket, PlaceholderArticle[]> = {
+const ARTICLES: Record<AgeBucket, Item[]> = {
   "0-6": [
     {
       title: "ASI eksklusif 6 bulan pertama",
@@ -43,7 +46,7 @@ const SAMPLE: Record<AgeBucket, PlaceholderArticle[]> = {
   "6-8": [
     {
       title: "Tekstur halus pertama",
-      body: "MPASI awal berupa puree tunggal — nasi saring, pisang, alpukat.",
+      body: "Perkenalkan puree tunggal — pisang, alpukat, nasi saring.",
     },
     {
       title: "Jadwal MPASI 6–8 bulan",
@@ -98,29 +101,90 @@ const SAMPLE: Record<AgeBucket, PlaceholderArticle[]> = {
   ],
 };
 
-export function RecommendationCards({ ageMonths }: { ageMonths: number }) {
-  const bucket = ageBucketOf(ageMonths);
-  const items = SAMPLE[bucket];
+const MPASI: Record<AgeBucket, Item[]> = {
+  "0-6": [
+    {
+      title: "Hanya ASI",
+      body: "Belum ada resep MPASI pada rentang usia ini — ASI saja sudah cukup.",
+    },
+    {
+      title: "Menyiapkan kesiapan MPASI",
+      body: "Perbekal diri dengan resep-resep yang akan diperkenalkan di usia 6 bulan.",
+    },
+  ],
+  "6-8": [
+    {
+      title: "Puree pisang",
+      body: "Tekstur halus untuk MPASI pertama; tinggal lumatkan pisang matang.",
+    },
+    {
+      title: "Bubur nasi saring",
+      body: "Bubur saring dengan sedikit ASI/formula, tanpa garam.",
+    },
+    {
+      title: "Puree alpukat",
+      body: "Lemak sehat untuk tumbuh kembang, tekstur lembut untuk awal MPASI.",
+    },
+  ],
+  "9-11": [
+    {
+      title: "Bubur tim ayam jagung",
+      body: "Protein hewani dan karbo kompleks, tekstur saring kasar.",
+    },
+    {
+      title: "Puree ikan kuning labu",
+      body: "Kombinasi protein & betakaroten untuk variasi rasa.",
+    },
+    {
+      title: "Tim bayam telur",
+      body: "Zat besi & protein dalam satu suapan lembut.",
+    },
+  ],
+  "12-24": [
+    {
+      title: "Nasi tim lengkap",
+      body: "Karbo, protein, sayur dalam porsi kecil siap makan keluarga.",
+    },
+    {
+      title: "Bakso tahu sayur",
+      body: "Tekstur kenyal lembut dan serat sayur dari rumah.",
+    },
+    {
+      title: "Sup kental tempe jagung",
+      body: "Protein nabati murah dan mengenyangkan.",
+    },
+  ],
+  "24-60": [
+    {
+      title: "Piring lengkap prasekolah",
+      body: "Satu porsi seimbang yang bisa disesuaikan menu keluarga.",
+    },
+    {
+      title: "Camilan buah & yogurt",
+      body: "Camilan padat gizi sebagai pengganti jajanan pabrikan.",
+    },
+    {
+      title: "Pancake pisang oat",
+      body: "Sarapan risiko gula rendah, serat tinggi.",
+    },
+  ],
+};
 
+function Section({
+  title,
+  Icon,
+  items,
+}: {
+  title: string;
+  Icon: typeof BookOpenText;
+  items: Item[];
+}) {
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h2 className="font-display text-[22px] leading-[1.25] font-medium">
-            Rekomendasi untuk usia ini
-          </h2>
-          <p className="mt-1 text-[15px] text-muted-foreground">
-            {AGE_BUCKET_LABEL[bucket]}
-          </p>
-        </div>
-        <Link
-          href="/edukasi"
-          className="hidden shrink-0 text-[15px] font-medium text-secondary underline-offset-4 hover:underline @sm:inline"
-        >
-          Lihat semua <ArrowRight className="inline size-4" aria-hidden />
-        </Link>
-      </div>
-
+    <section className="flex flex-col gap-3">
+      <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug">
+        <Icon className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+        {title}
+      </h3>
       <div className="grid grid-cols-1 gap-4 @md/field-group:grid-cols-3">
         {items.map((item) => (
           <Card key={item.title} size="sm">
@@ -137,13 +201,43 @@ export function RecommendationCards({ ageMonths }: { ageMonths: number }) {
           </Card>
         ))}
       </div>
+    </section>
+  );
+}
 
-      <Link
-        href="/edukasi"
-        className="mt-1 text-[15px] font-medium text-secondary underline-offset-4 hover:underline @sm:hidden"
-      >
-        Lihat semua resep &amp; artikel
-      </Link>
+export function RecommendationCards({ ageMonths }: { ageMonths: number }) {
+  const bucket = ageBucketOf(ageMonths);
+
+  return (
+    <section className="flex flex-col gap-6">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="font-display text-[22px] leading-[1.25] font-medium">
+            Rekomendasi untuk usia ini
+          </h2>
+          <p className="mt-1 text-[15px] text-muted-foreground">
+            {AGE_BUCKET_LABEL[bucket]}
+          </p>
+        </div>
+        <Link
+          href="/edukasi"
+          className="shrink-0 text-[15px] font-medium text-secondary underline-offset-4 hover:underline"
+        >
+          Lihat semua resep &amp; artikel
+          <ArrowRight className="ml-1 inline size-4" aria-hidden />
+        </Link>
+      </div>
+
+      <Section
+        title="Artikel Gizi"
+        Icon={BookOpenText}
+        items={ARTICLES[bucket]}
+      />
+      <Section
+        title="Resep MPASI"
+        Icon={CookingPot}
+        items={MPASI[bucket]}
+      />
     </section>
   );
 }

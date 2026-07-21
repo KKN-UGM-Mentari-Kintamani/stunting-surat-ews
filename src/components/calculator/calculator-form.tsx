@@ -5,8 +5,10 @@
  * boundary of the WHO LMS reference table — outside it the submit button
  * disables and shows the exact PRD-mandated message. The math runs purely
  * client-side (PRD §5.3), no network round-trip on submit.
+ *
+ * Layout: 6 inputs in a responsive 2-column grid (3 left / 3 right). Required
+ * fields carry a red asterisk; the two optional kader screenings have none.
  */
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, Loader2 } from "lucide-react";
@@ -23,10 +25,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -49,10 +49,18 @@ interface Props {
 
 const fieldLabelClass = "text-[15px] font-medium leading-snug";
 const helperClass = "text-[13px] leading-relaxed text-muted-foreground";
+const gridClass =
+  "grid grid-cols-1 gap-5 @md/field-group:grid-cols-2";
+
+function RequiredMark() {
+  return (
+    <span aria-hidden className="ml-0.5 text-destructive">
+      *
+    </span>
+  );
+}
 
 export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
-  const [kaderMode, setKaderMode] = useState(false);
-
   const {
     register,
     handleSubmit,
@@ -87,77 +95,82 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
           className="flex flex-col gap-5"
         >
           <FieldGroup>
-            {/* Gender */}
-            <Field data-invalid={!!errors.gender}>
-              <FieldLabel htmlFor="gender" className={fieldLabelClass}>
-                Jenis Kelamin
-              </FieldLabel>
-              <Controller
-                name="gender"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger
-                      id="gender"
-                      aria-invalid={!!errors.gender}
-                      className="w-full"
+            <p className="text-[13px] text-muted-foreground">
+              Bidang bertanda <span className="text-destructive">*</span> wajib diisi.
+            </p>
+
+            {/* Row 1: Gender | Age (collapses to a single column on narrow cards). */}
+            <div className={gridClass}>
+              <Field data-invalid={!!errors.gender}>
+                <FieldLabel htmlFor="gender" className={fieldLabelClass}>
+                  Jenis Kelamin<RequiredMark />
+                </FieldLabel>
+                <Controller
+                  name="gender"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
                     >
-                      <SelectValue placeholder="Pilih jenis kelamin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="male">Laki-laki</SelectItem>
-                        <SelectItem value="female">Perempuan</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.gender && (
-                <FieldError errors={[errors.gender]} />
-              )}
-            </Field>
-
-            {/* Age (months) */}
-            <Field data-invalid={!!errors.ageMonths}>
-              <FieldLabel htmlFor="ageMonths" className={fieldLabelClass}>
-                Usia (bulan)
-              </FieldLabel>
-              <Input
-                id="ageMonths"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={MAX_AGE_MONTHS}
-                step={1}
-                placeholder="Contoh: 14"
-                aria-invalid={!!errors.ageMonths}
-                {...register("ageMonths", { valueAsNumber: true })}
-              />
-              <FieldDescription className={helperClass}>
-                Berlaku untuk usia {MIN_AGE_MONTHS}–{MAX_AGE_MONTHS} bulan.
-              </FieldDescription>
-              {errors.ageMonths && (
-                <FieldError
-                  errors={[errors.ageMonths]}
-                  className="flex items-center gap-1.5"
-                >
-                  {ageOutOfRange && (
-                    <Info className="size-4 shrink-0" aria-hidden />
+                      <SelectTrigger
+                        id="gender"
+                        aria-invalid={!!errors.gender}
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Pilih jenis kelamin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="male">Laki-laki</SelectItem>
+                          <SelectItem value="female">Perempuan</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   )}
-                  {errors.ageMonths.message}
-                </FieldError>
-              )}
-            </Field>
+                />
+                {errors.gender && (
+                  <FieldError errors={[errors.gender]} />
+                )}
+              </Field>
 
-            {/* Weight + Height (responsive row) */}
-            <div className="grid grid-cols-1 gap-5 @md/field-group:grid-cols-2">
+              <Field data-invalid={!!errors.ageMonths}>
+                <FieldLabel htmlFor="ageMonths" className={fieldLabelClass}>
+                  Usia (bulan)<RequiredMark />
+                </FieldLabel>
+                <Input
+                  id="ageMonths"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_AGE_MONTHS}
+                  step={1}
+                  placeholder="Contoh: 14"
+                  aria-invalid={!!errors.ageMonths}
+                  {...register("ageMonths", { valueAsNumber: true })}
+                />
+                <FieldDescription className={helperClass}>
+                  Berlaku untuk usia {MIN_AGE_MONTHS}–{MAX_AGE_MONTHS} bulan.
+                </FieldDescription>
+                {errors.ageMonths && (
+                  <FieldError
+                    errors={[errors.ageMonths]}
+                    className="flex items-center gap-1.5"
+                  >
+                    {ageOutOfRange && (
+                      <Info className="size-4 shrink-0" aria-hidden />
+                    )}
+                    {errors.ageMonths.message}
+                  </FieldError>
+                )}
+              </Field>
+            </div>
+
+            {/* Row 2: Weight | Height */}
+            <div className={gridClass}>
               <Field data-invalid={!!errors.weightKg}>
                 <FieldLabel htmlFor="weightKg" className={fieldLabelClass}>
-                  Berat badan (kg)
+                  Berat badan (kg)<RequiredMark />
                 </FieldLabel>
                 <Input
                   id="weightKg"
@@ -177,7 +190,7 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
 
               <Field data-invalid={!!errors.heightCm}>
                 <FieldLabel htmlFor="heightCm" className={fieldLabelClass}>
-                  Tinggi/panjang badan (cm)
+                  Tinggi/panjang badan (cm)<RequiredMark />
                 </FieldLabel>
                 <Input
                   id="heightCm"
@@ -196,84 +209,70 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
               </Field>
             </div>
 
-            {/* Optional kader screenings (PRD 4.1) */}
-            <Field orientation="horizontal" className="items-start">
-              <Checkbox
-                id="kaderMode"
-                checked={kaderMode}
-                onCheckedChange={(v) => setKaderMode(v === true)}
-                className="mt-1"
-              />
-              <FieldContent>
-                <FieldLabel htmlFor="kaderMode" className={fieldLabelClass}>
-                  Isi data skrining kader (opsional)
+            {/* Row 3: Optional kader screenings (PRD 4.1) — always visible, no asterisk. */}
+            <div className={gridClass}>
+              <Field data-invalid={!!errors.headCircumferenceCm}>
+                <FieldLabel
+                  htmlFor="headCircumferenceCm"
+                  className={fieldLabelClass}
+                >
+                  Lingkar kepala (cm)
+                  <span className="ml-1 text-[13px] font-normal text-muted-foreground">
+                    (opsional)
+                  </span>
                 </FieldLabel>
-                <FieldDescription className={helperClass}>
-                  Lingkar kepala & lingkar lengan atas — hanya untuk tenaga
-                  kader kesehatan. Tidak memengaruhi hasil stunting utama.
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+                <Input
+                  id="headCircumferenceCm"
+                  type="number"
+                  inputMode="decimal"
+                  step={0.1}
+                  min={20}
+                  max={60}
+                  placeholder="Contoh: 46"
+                  aria-invalid={!!errors.headCircumferenceCm}
+                  {...register("headCircumferenceCm", {
+                    setValueAs: (v) =>
+                      v === "" || v === null || Number.isNaN(v)
+                        ? undefined
+                        : Number(v),
+                  })}
+                />
+                {errors.headCircumferenceCm && (
+                  <FieldError errors={[errors.headCircumferenceCm]} />
+                )}
+              </Field>
 
-            {kaderMode && (
-              <div className="grid grid-cols-1 gap-5 @md/field-group:grid-cols-2">
-                <Field data-invalid={!!errors.headCircumferenceCm}>
-                  <FieldLabel
-                    htmlFor="headCircumferenceCm"
-                    className={fieldLabelClass}
-                  >
-                    Lingkar kepala (cm) — opsional
-                  </FieldLabel>
-                  <Input
-                    id="headCircumferenceCm"
-                    type="number"
-                    inputMode="decimal"
-                    step={0.1}
-                    min={20}
-                    max={60}
-                    placeholder="Contoh: 46"
-                    aria-invalid={!!errors.headCircumferenceCm}
-                    {...register("headCircumferenceCm", {
-                      setValueAs: (v) =>
-                        v === "" || v === null || Number.isNaN(v)
-                          ? undefined
-                          : Number(v),
-                    })}
-                  />
-                  {errors.headCircumferenceCm && (
-                    <FieldError errors={[errors.headCircumferenceCm]} />
-                  )}
-                </Field>
-
-                <Field data-invalid={!!errors.armCircumferenceCm}>
-                  <FieldLabel
-                    htmlFor="armCircumferenceCm"
-                    className={fieldLabelClass}
-                  >
-                    Lingkar lengan atas (cm) — opsional
-                  </FieldLabel>
-                  <Input
-                    id="armCircumferenceCm"
-                    type="number"
-                    inputMode="decimal"
-                    step={0.1}
-                    min={5}
-                    max={30}
-                    placeholder="Contoh: 15"
-                    aria-invalid={!!errors.armCircumferenceCm}
-                    {...register("armCircumferenceCm", {
-                      setValueAs: (v) =>
-                        v === "" || v === null || Number.isNaN(v)
-                          ? undefined
-                          : Number(v),
-                    })}
-                  />
-                  {errors.armCircumferenceCm && (
-                    <FieldError errors={[errors.armCircumferenceCm]} />
-                  )}
-                </Field>
-              </div>
-            )}
+              <Field data-invalid={!!errors.armCircumferenceCm}>
+                <FieldLabel
+                  htmlFor="armCircumferenceCm"
+                  className={fieldLabelClass}
+                >
+                  Lingkar lengan atas (cm)
+                  <span className="ml-1 text-[13px] font-normal text-muted-foreground">
+                    (opsional)
+                  </span>
+                </FieldLabel>
+                <Input
+                  id="armCircumferenceCm"
+                  type="number"
+                  inputMode="decimal"
+                  step={0.1}
+                  min={5}
+                  max={30}
+                  placeholder="Contoh: 15"
+                  aria-invalid={!!errors.armCircumferenceCm}
+                  {...register("armCircumferenceCm", {
+                    setValueAs: (v) =>
+                      v === "" || v === null || Number.isNaN(v)
+                        ? undefined
+                        : Number(v),
+                  })}
+                />
+                {errors.armCircumferenceCm && (
+                  <FieldError errors={[errors.armCircumferenceCm]} />
+                )}
+              </Field>
+            </div>
           </FieldGroup>
 
           <div className="flex flex-col gap-2 @md/field-group:flex-row @md/field-group:items-center @md/field-group:justify-between">

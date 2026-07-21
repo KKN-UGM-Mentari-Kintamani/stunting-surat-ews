@@ -51,8 +51,12 @@ function Row({
 
 export function ClinicalAccordion({ assessment, ageMonths, gender }: Props) {
   return (
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="clinical">
+    <Accordion
+      type="single"
+      collapsible
+      className="w-full overflow-hidden rounded-md border border-border bg-card shadow-[0_2px_8px_rgba(43,40,35,0.06)]"
+    >
+      <AccordionItem value="clinical" className="border-0">
         <AccordionTrigger className="text-[15px] font-medium">
           Rincian klinis (untuk tenaga kesehatan)
         </AccordionTrigger>

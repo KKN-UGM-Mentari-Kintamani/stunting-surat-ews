@@ -22,6 +22,12 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   /**
+   * `primary` items sit in the left desktop nav group; non-primary items
+   * (e.g. "Profil Saya") live with the auth block on the right, and are only
+   * shown to logged-in users — guests see "Masuk" instead.
+   */
+  primary?: boolean;
+  /**
    * Feature gate: items stay hidden until their phase ships.
    * Phase 2 sets `layanan-surat` → true (Master Doc §2).
    */
@@ -56,6 +62,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: "Profil",
     label: "Profil Saya",
     icon: UserRound,
+    primary: false, // right group — appears only for logged-in users
     enabled: true,
   },
 ];
