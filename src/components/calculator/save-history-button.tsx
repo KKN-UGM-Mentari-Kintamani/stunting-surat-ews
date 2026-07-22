@@ -32,27 +32,31 @@ export function SaveHistoryButton({ isLoggedIn }: { isLoggedIn: boolean }) {
 
   if (isLoggedIn) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* span wrapper keeps the disabled Button hoverable for the tooltip */}
-          <span className="inline-flex">
-            <Button variant="outline" disabled className="gap-2">
-              <Bookmark className="size-4" strokeWidth={1.5} aria-hidden />
-              Simpan ke Riwayat Tumbuh
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          Fitur simpan ke riwayat akan hadir segera
-        </TooltipContent>
-      </Tooltip>
+      <div className="flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* span wrapper keeps the disabled Button hoverable for the tooltip */}
+            <span className="inline-flex">
+              <Button variant="default" disabled className="gap-2">
+                <Bookmark className="size-4" strokeWidth={1.5} aria-hidden />
+                Simpan ke Riwayat Tumbuh
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            Fitur simpan ke riwayat akan hadir segera
+          </TooltipContent>
+        </Tooltip>
+        {/* Mobile has no hover, so the reason is spelled out inline. */}
+        <span className="text-[13px] text-muted-foreground">(segera hadir)</span>
+      </div>
     );
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="default" className="gap-2">
           <Bookmark className="size-4" strokeWidth={1.5} aria-hidden />
           Simpan ke Riwayat Tumbuh
         </Button>

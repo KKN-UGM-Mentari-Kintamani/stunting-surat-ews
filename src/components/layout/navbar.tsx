@@ -3,6 +3,8 @@
 /* src/components/layout/navbar.tsx
  * Desktop top navbar (Design §3.3). Hidden below the md breakpoint where the
  * BottomTabBar takes over. Renders from NAV_ITEMS (data-driven, Phase-2-ready).
+ * Layout: logo alone on the left; all navigation + the auth block on the right.
+ * "Profil Saya" is authOnly (Master Doc §2) — guests see "Masuk" instead.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -44,10 +46,10 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Navbar({ user }: { user: NavbarUser | null }) {
   const pathname = usePathname();
-  // Left group: primary navigation only (Profile is excluded — it lives with auth).
-  const leftItems = NAV_ITEMS.filter(
-    (i) => i.enabled && i.primary !== false,
-  );
+  // Right-group main menu (exclude authOnly items — those render separately for logged-in users).
+  const menuItems = NAV_ITEMS.filter((i) => i.enabled && !i.authOnly);
+  // The Profile item (authOnly) is rendered as a nav link near the auth block.
+  const profileItem = NAV_ITEMS.find((i) => i.authOnly && i.enabled);
 
   function navLinkClasses(href: string): string {
     const active = isActive(pathname, href);
@@ -62,23 +64,24 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
   return (
     <header className="sticky top-0 z-40 hidden border-b border-border bg-background/95 backdrop-blur-sm md:block">
       <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-6 px-8">
-        {/* Left group: brand + primary navigation. */}
-        <div className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="flex items-center gap-2 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-            aria-label="Portal Desa — kembali ke beranda"
-          >
-            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Sprout className="size-5" strokeWidth={1.5} aria-hidden />
-            </span>
-            <span className="font-display text-lg font-semibold text-foreground">
-              Portal Desa
-            </span>
-          </Link>
+        {/* Left: brand only. */}
+        <Link
+          href="/"
+          className="flex items-center gap-2 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+          aria-label="Portal Desa — kembali ke beranda"
+        >
+          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Sprout className="size-5" strokeWidth={1.5} aria-hidden />
+          </span>
+          <span className="font-display text-lg font-semibold text-foreground">
+            Portal Desa
+          </span>
+        </Link>
 
+        {/* Right: menu (Profil Saya when logged in) + account block / Masuk. */}
+        <div className="ml-auto flex items-center gap-2">
           <nav aria-label="Navigasi utama" className="flex items-center gap-1">
-            {leftItems.map((item) => (
+            {menuItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -88,63 +91,63 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
                 {item.label}
               </Link>
             ))}
-          </nav>
-        </div>
-
-        {/* Right group: profile link + account menu, or "Masuk" for guests. */}
-        <div className="ml-auto flex items-center gap-2">
-          {user ? (
-            <>
+            {/* Profil Saya appears here only when logged in (authOnly). */}
+            {user && profileItem && (
               <Link
-                href="/profil"
-                aria-current={isActive(pathname, "/profil") ? "page" : undefined}
-                className={navLinkClasses("/profil")}
+                href={profileItem.href}
+                aria-current={
+                  isActive(pathname, profileItem.href) ? "page" : undefined
+                }
+                className={navLinkClasses(profileItem.href)}
               >
-                Profil Saya
+                {profileItem.label}
               </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 px-2">
-                    <Avatar className="size-8">
-                      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                        {initialsOf(user.name) || "W"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="max-w-32 truncate text-[15px]">
-                      {user.name}
-                    </span>
-                    <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="flex flex-col gap-0.5">
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs font-normal text-muted-foreground">
-                      {user.email}
-                    </span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem asChild>
-                      <Link href="/profil">Profil Saya</Link>
-                    </DropdownMenuItem>
-                    {roleMenuFor(user.role).map((m) => (
-                      <DropdownMenuItem key={m.href} asChild>
-                        <Link href={m.href}>{m.label}</Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onSelect={() => void signOutAction()}
-                  >
-                    <LogOut aria-hidden />
-                    Keluar
+            )}
+          </nav>
+
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="gap-2 px-2">
+                  <Avatar className="size-8">
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                      {initialsOf(user.name) || "W"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-32 truncate text-[15px]">
+                    {user.name}
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex flex-col gap-0.5">
+                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate text-xs font-normal text-muted-foreground">
+                    {user.email}
+                  </span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profil">Profil Saya</Link>
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+                  {roleMenuFor(user.role).map((m) => (
+                    <DropdownMenuItem key={m.href} asChild>
+                      <Link href={m.href}>{m.label}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => void signOutAction()}
+                >
+                  <LogOut aria-hidden />
+                  Keluar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button asChild>
               <Link href="/login">Masuk</Link>
