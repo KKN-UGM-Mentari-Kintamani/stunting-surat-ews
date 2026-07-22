@@ -8,6 +8,7 @@
  */
 import type { Assessment, Gender } from "@/lib/calc/lms";
 import type { ChildSummary } from "@/app/profil/_queries";
+import type { ArticleCardData } from "@/app/edukasi/page";
 import { ClinicalAccordion } from "@/components/calculator/clinical-accordion";
 import { RecommendationCards } from "@/components/calculator/recommendation-cards";
 import {
@@ -27,6 +28,7 @@ interface Props {
   isLoggedIn: boolean;
   anak: ChildSummary[];
   draft: SaveDraft;
+  edukasiRecs: Record<string, { artikel_gizi: ArticleCardData[]; resep_mpasi: ArticleCardData[] }>;
   onReset: () => void;
 }
 
@@ -54,6 +56,7 @@ export function ResultSection({
   isLoggedIn,
   anak,
   draft,
+  edukasiRecs,
   onReset,
 }: Props) {
   return (
@@ -100,7 +103,7 @@ export function ResultSection({
       </Reveal>
 
       <Reveal delay={400}>
-        <RecommendationCards ageMonths={ageMonths} />
+        <RecommendationCards ageMonths={ageMonths} edukasiRecs={edukasiRecs} />
       </Reveal>
     </section>
   );

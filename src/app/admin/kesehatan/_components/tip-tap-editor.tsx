@@ -72,7 +72,7 @@ export function TipTapEditor({ content = "", onChange }: Props) {
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none min-h-[200px] px-4 py-3 rounded-b-md border-x border-b border-input bg-transparent text-[16px] leading-[1.7] text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
+          "prose prose-sm max-w-none min-h-[200px] px-4 py-3 rounded-b-md border-x border-b border-input bg-transparent text-[16px] leading-[1.7] text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 prose-headings:font-display prose-h1:text-[28px] prose-h1:leading-[1.15] prose-h2:text-[22px] prose-h2:leading-[1.25] prose-h3:text-[18px] prose-h3:leading-[1.3] prose-a:text-secondary prose-a:underline prose-a:font-medium prose-ul:list-disc prose-ol:list-decimal prose-li:mb-1",
       },
     },
   });

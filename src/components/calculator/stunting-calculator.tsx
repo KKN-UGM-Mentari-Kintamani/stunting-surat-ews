@@ -20,10 +20,12 @@ import {
 } from "@/lib/calc/lms";
 import type { CalculatorFormValues } from "@/lib/calc/schema";
 import type { ChildSummary } from "@/app/profil/_queries";
+import type { ArticleCardData } from "@/app/edukasi/page";
 
 interface Props {
   isLoggedIn: boolean;
   anak: ChildSummary[];
+  edukasiRecs: Record<string, { artikel_gizi: ArticleCardData[]; resep_mpasi: ArticleCardData[] }>;
 }
 
 interface Echo {
@@ -32,7 +34,7 @@ interface Echo {
   draft: SaveDraft;
 }
 
-export function StuntingCalculator({ isLoggedIn, anak }: Props) {
+export function StuntingCalculator({ isLoggedIn, anak, edukasiRecs }: Props) {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [echo, setEcho] = useState<Echo | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -108,6 +110,7 @@ export function StuntingCalculator({ isLoggedIn, anak }: Props) {
             isLoggedIn={isLoggedIn}
             anak={anak}
             draft={echo.draft}
+            edukasiRecs={edukasiRecs}
             onReset={handleReset}
           />
         </div>

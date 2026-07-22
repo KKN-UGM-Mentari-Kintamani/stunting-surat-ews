@@ -5,7 +5,7 @@
  */
 import { Hero } from "@/components/calculator/hero";
 import { StuntingCalculator } from "@/components/calculator/stunting-calculator";
-import { getChildrenSummary } from "@/app/profil/_queries";
+import { getChildrenSummary, getEdukasiRecommendations } from "@/app/profil/_queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -23,11 +23,13 @@ export default async function Home() {
   // Light list of children — only when logged in, so the save dialog selection
   // has data ready without an extra request (saves an RTT on rural connections).
   const children = isLoggedIn ? (await getChildrenSummary()) ?? [] : [];
+  // Pre-fetch all published edukasi, grouped by age bucket, for contextual recs.
+  const edukasiRecs = await getEdukasiRecommendations();
 
   return (
     <>
       <Hero />
-      <StuntingCalculator isLoggedIn={isLoggedIn} anak={children} />
+      <StuntingCalculator isLoggedIn={isLoggedIn} anak={children} edukasiRecs={edukasiRecs} />
     </>
   );
 }

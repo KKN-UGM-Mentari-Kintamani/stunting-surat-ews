@@ -47,7 +47,7 @@ export function EducationGrid({
           </Empty>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-2 @4xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
           {filtered.map((a) => (
             <ArticleCard key={a.id} article={a} />
           ))}

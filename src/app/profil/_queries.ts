@@ -5,6 +5,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { ageMonthsFromBirth, MAX_AGE_MONTHS } from "@/lib/calc/lms";
 
+// Re-use the public ArticleCardData type from /edukasi.
+import type { ArticleCardData } from "@/app/edukasi/page";
+
 export interface ChildRow {
   id: string;
   nama_anak: string;
@@ -71,6 +74,47 @@ export async function getChildrenSummary(): Promise<ChildSummary[] | null> {
       inRange: ageMonthsNow >= 0 && ageMonthsNow <= MAX_AGE_MONTHS,
     };
   });
+}
+
+/**
+ * Pre-fetch published edukasi grouped by age bucket (kategori_umur).
+ * Each bucket contains ≤3 articles + ≤3 recipes — enough for the contextual
+ * recommendation cards on the home page and the education directory ("Lihat
+ * semua" links to /edukasi).
+ */
+export async function getEdukasiRecommendations(): Promise<
+  Record<string, { artikel_gizi: ArticleCardData[]; resep_mpasi: ArticleCardData[] }>
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("edukasi")
+    .select("id, judul, slug, tipe_konten, kategori_umur, thumbnail_url, created_at")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[queries] getEdukasiRecommendations failed:", error.message);
+    return {};
+  }
+
+  const grouped: Record<string, { artikel_gizi: ArticleCardData[]; resep_mpasi: ArticleCardData[] }> = {};
+  for (const item of data ?? []) {
+    const bucket = item.kategori_umur;
+    if (!grouped[bucket]) grouped[bucket] = { artikel_gizi: [], resep_mpasi: [] };
+    const arr = grouped[bucket][item.tipe_konten as "artikel_gizi" | "resep_mpasi"];
+    if (arr.length < 3) {
+      arr.push({
+        id: item.id,
+        judul: item.judul,
+        slug: item.slug,
+        tipe_konten: item.tipe_konten,
+        kategori_umur: item.kategori_umur,
+        thumbnail_url: item.thumbnail_url,
+        created_at: item.created_at,
+      });
+    }
+  }
+  return grouped;
 }
 
 export async function getProfileData(): Promise<ProfileData> {

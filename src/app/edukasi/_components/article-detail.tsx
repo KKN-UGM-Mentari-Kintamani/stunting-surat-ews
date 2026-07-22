@@ -110,7 +110,7 @@ export function ArticleDetailView({ article }: Props) {
 
       {/* Content — TipTap output is safe HTML; styled via the prose wrapper. */}
       <div
-        className="konten-artikel flex flex-col gap-4 text-[16px] leading-[1.7] text-foreground [&_h2]:font-display [&_h2]:text-[22px] [&_h2]:font-medium [&_h2]:leading-[1.25] [&_h3]:font-semibold [&_h3]:text-[18px] [&_h3]:leading-[1.3] [&_p]:leading-[1.7] [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1 [&_li]:leading-[1.6] [&_blockquote]:border-l-[3px] [&_blockquote]:border-primary/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_hr]:my-6 [&_hr]:border-border [&_a]:font-medium [&_a]:text-secondary [&_a]:underline [&_a]:underline-offset-4"
+        className="konten-artikel flex flex-col gap-4 text-[16px] leading-[1.7] text-foreground [&_h1]:font-display [&_h1]:text-[24px] [&_h1]:leading-[1.25] [&_h1]:font-semibold [&_h2]:font-display [&_h2]:text-[22px] [&_h2]:font-medium [&_h2]:leading-[1.25] [&_h3]:font-semibold [&_h3]:text-[18px] [&_h3]:leading-[1.3] [&_p]:leading-[1.7] [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1 [&_li]:leading-[1.6] [&_blockquote]:border-l-[3px] [&_blockquote]:border-primary/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_hr]:my-6 [&_hr]:border-border [&_a]:font-medium [&_a]:text-secondary [&_a]:underline [&_a]:underline-offset-4"
         dangerouslySetInnerHTML={{ __html: article.konten_html }}
       />
 

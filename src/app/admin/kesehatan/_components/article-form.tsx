@@ -64,6 +64,7 @@ export function ArticleForm({ defaultValues, mode }: Props) {
   const [thumbnailUrl, setThumbnailUrl] = useState(defaultValues?.thumbnail_url ?? "");
   const [isPending, start] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+  const publishIntentRef = useRef(false);
   const tipeKontenRef = useRef<HTMLInputElement>(null);
   const kategoriUmurRef = useRef<HTMLInputElement>(null);
 
@@ -77,14 +78,14 @@ export function ArticleForm({ defaultValues, mode }: Props) {
     },
   });
 
-  async function handleClientSubmit(values: FormValues, event?: React.BaseSyntheticEvent) {
+  async function handleClientSubmit(values: FormValues) {
     setActionError(null);
     if (!isValid) {
       setActionError("Periksa kembali isian formulir.");
       return;
     }
-    const submitter = (event?.nativeEvent as SubmitEvent)?.submitter as HTMLButtonElement | null;
-    const willPublish = submitter?.textContent === "Terbitkan";
+    const willPublish = publishIntentRef.current;
+    publishIntentRef.current = false;
     start(async () => {
       const fd = new FormData();
       fd.set("judul", values.judul);
@@ -107,6 +108,7 @@ export function ArticleForm({ defaultValues, mode }: Props) {
   }
 
   return (
+    // eslint-disable-next-line react-hooks/refs
     <form onSubmit={handleSubmit(handleClientSubmit)} className="flex flex-col gap-6">
       <input type="hidden" name="konten_html" value={kontenHtml} readOnly />
       <input type="hidden" name="thumbnail_url" value={thumbnailUrl} readOnly />
@@ -204,7 +206,7 @@ export function ArticleForm({ defaultValues, mode }: Props) {
             {isPending ? <Loader2 className="animate-spin" aria-hidden /> : <Save className="size-4" strokeWidth={1.5} aria-hidden />}
             {mode === "create" ? "Simpan sebagai Draft" : "Simpan Perubahan"}
           </Button>
-          <Button type="submit" variant="default" className="gap-2" disabled={isPending}>
+          <Button type="submit" variant="default" className="gap-2" disabled={isPending} onPointerDown={() => { publishIntentRef.current = true; }}>
             {isPending ? <Loader2 className="animate-spin" aria-hidden /> : null}
             Terbitkan
           </Button>
