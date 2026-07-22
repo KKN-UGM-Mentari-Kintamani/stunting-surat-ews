@@ -8,7 +8,8 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LogOut, Sprout } from "lucide-react";
+import Image from "next/image";
+import { ChevronDown, LogOut } from "lucide-react";
 
 import { signOutAction } from "@/lib/auth/actions";
 import { NAV_ITEMS, roleMenuFor } from "@/lib/navigation";
@@ -68,9 +69,13 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
           className="flex items-center gap-2 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           aria-label="Portal Desa — kembali ke beranda"
         >
-          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Sprout className="size-5" strokeWidth={1.5} aria-hidden />
-          </span>
+          <Image
+            src="/Logo.png"
+            alt="Portal Desa"
+            width={36}
+            height={36}
+            className="rounded-md"
+          />
           <span className="font-display text-lg font-semibold text-foreground">
             Portal Desa
           </span>

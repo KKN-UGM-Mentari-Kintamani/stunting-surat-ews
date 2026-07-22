@@ -4,7 +4,7 @@
  * BottomTabBar (<md) per Design §3.3.
  */
 import Link from "next/link";
-import { Sprout } from "lucide-react";
+import Image from "next/image";
 
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
 import { Navbar, type NavbarUser } from "@/components/layout/navbar";
@@ -47,9 +47,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* Slim mobile brand header (bottom tab bar carries navigation). */}
       <header className="flex h-14 items-center border-b border-border bg-background px-5 md:hidden">
         <Link href="/" className="flex items-center gap-2" aria-label="Portal Desa — beranda">
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Sprout className="size-4" strokeWidth={1.5} aria-hidden />
-          </span>
+          <Image
+            src="/Logo.png"
+            alt="Portal Desa"
+            width={28}
+            height={28}
+            className="rounded-md"
+          />
           <span className="font-display text-base font-semibold">Portal Desa</span>
         </Link>
       </header>

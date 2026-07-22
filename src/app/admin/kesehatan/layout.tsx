@@ -3,9 +3,9 @@
  * but we add a server-side guard as defense-in-depth (AGENTS.md §2). The
  * slim header stays out of the way on low-end mobile screens.
  */
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Sprout } from "lucide-react";
+import Image from "next/image";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,9 +36,13 @@ export default async function AdminKesehatanLayout({
             href="/admin/kesehatan"
             className="flex items-center gap-2"
           >
-            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Sprout className="size-4" strokeWidth={1.5} aria-hidden />
-            </span>
+            <Image
+              src="/Logo.png"
+              alt="Portal Desa"
+              width={28}
+              height={28}
+              className="rounded-md"
+            />
             <span className="font-display text-base font-semibold">
               Dasbor Posyandu
             </span>
