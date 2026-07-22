@@ -47,7 +47,7 @@ export default async function EdukasiPage() {
 
       <Suspense
         fallback={
-          <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-2 @4xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-48 w-full rounded-md" />
             ))}
