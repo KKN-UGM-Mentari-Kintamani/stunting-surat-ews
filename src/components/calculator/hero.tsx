@@ -32,9 +32,9 @@ export function Hero() {
       </svg>
 
       <div className="relative mx-auto w-full max-w-[1120px]">
-        <p className="mb-3 text-[13px] font-medium tracking-[0.06em] text-primary uppercase">
+        {/* <p className="mb-3 text-[13px] font-medium tracking-[0.06em] text-primary uppercase">
           Posyandu • Desa
-        </p>
+        </p> */}
         <h1 className="font-display text-[28px] leading-[1.15] font-semibold text-foreground md:text-[40px] md:leading-[1.1]">
           Yuk cek tumbuh kembang si kecil.
         </h1>

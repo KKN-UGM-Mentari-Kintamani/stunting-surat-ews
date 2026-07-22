@@ -1,4 +1,4 @@
-"use client.";
+"use client";
 
 /* src/components/calculator/result-section.tsx
  * Result reveal (Design §7): status badge → targets card → clinical
@@ -7,9 +7,13 @@
  * back to a no-op under reduced motion).
  */
 import type { Assessment, Gender } from "@/lib/calc/lms";
+import type { ChildSummary } from "@/app/profil/_queries";
 import { ClinicalAccordion } from "@/components/calculator/clinical-accordion";
 import { RecommendationCards } from "@/components/calculator/recommendation-cards";
-import { SaveHistoryButton } from "@/components/calculator/save-history-button";
+import {
+  SaveFlow,
+  type SaveDraft,
+} from "@/components/calculator/save-flow";
 import {
   StatusBadge,
   StatusHeadline,
@@ -21,6 +25,8 @@ interface Props {
   ageMonths: number;
   gender: Gender;
   isLoggedIn: boolean;
+  anak: ChildSummary[];
+  draft: SaveDraft;
   onReset: () => void;
 }
 
@@ -46,6 +52,8 @@ export function ResultSection({
   ageMonths,
   gender,
   isLoggedIn,
+  anak,
+  draft,
   onReset,
 }: Props) {
   return (
@@ -87,7 +95,7 @@ export function ResultSection({
           >
             Hitung ulang
           </button>
-          <SaveHistoryButton isLoggedIn={isLoggedIn} />
+          <SaveFlow isLoggedIn={isLoggedIn} anak={anak} draft={draft} />
         </div>
       </Reveal>
 

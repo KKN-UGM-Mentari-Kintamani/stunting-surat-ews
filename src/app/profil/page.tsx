@@ -7,6 +7,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
+import { AutoOpenAddChild } from "@/app/profil/_components/auto-open-add-child";
 import { createClient } from "@/lib/supabase/server";
 import { ChildrenSection } from "@/app/profil/_components/children-section";
 import { ConsentGate } from "@/app/profil/_components/consent-gate";
@@ -21,7 +22,12 @@ export const metadata = {
     "Kelola profil anak dan riwayat tumbuh kembang si kecil di Portal Desa.",
 };
 
-export default async function ProfilPage() {
+export default async function ProfilPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ new?: string }>;
+}) {
+  const { new: newFlag } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,13 +37,13 @@ export default async function ProfilPage() {
   return (
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-8 px-5 py-10 md:px-8 md:py-14">
       <Suspense fallback={<ProfilSkeleton />}>
-        <ProfilContent />
+        <ProfilContent autoAddNew={newFlag === "1"} />
       </Suspense>
     </div>
   );
 }
 
-async function ProfilContent() {
+async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
   const data = await getProfileData();
   const consented = data.user.consent_given_at !== null;
 
@@ -53,7 +59,10 @@ async function ProfilContent() {
 
       {consented && (
         <ProfileTabs>
-          <ChildrenSection items={data.children} />
+          <>
+            <AutoOpenAddChild autoOpen={autoAddNew} />
+            <ChildrenSection items={data.children} />
+          </>
         </ProfileTabs>
       )}
     </>

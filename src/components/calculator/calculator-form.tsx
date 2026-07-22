@@ -9,6 +9,7 @@
  * Layout: 6 inputs in a responsive 2-column grid (3 left / 3 right). Required
  * fields carry a red asterisk; the two optional kader screenings have none.
  */
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, Loader2 } from "lucide-react";
@@ -61,10 +62,12 @@ function RequiredMark() {
 }
 
 export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
+  const [draftRestored, setDraftRestored] = useState(false);
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isValid },
   } = useForm<CalculatorFormValues>({
     resolver: zodResolver(calculatorSchema),
@@ -78,6 +81,38 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
       armCircumferenceCm: undefined,
     },
   });
+
+  // Draft restore (PDP-safe: non-persistent sessionStorage only). After login
+  // on the Guest save-flow, "Simpan ke Riwayat" wrote the form values here; on
+  // home return we re-populate the form so the user can re-check immediately.
+  useEffect(() => {
+    if (draftRestored) return;
+    try {
+      const raw = sessionStorage.getItem("stunting_draft");
+      if (!raw) return;
+      sessionStorage.removeItem("stunting_draft");
+      const d = JSON.parse(raw) as CalculatorFormValues & { ts: number };
+      if (!d || typeof d.ts !== "number") return;
+      // Drafts expire after 30 min — long enough for a Google OAuth roundtrip.
+      if (Date.now() - d.ts > 30 * 60 * 1000) return;
+      reset({
+        gender: d.gender,
+        ageMonths: Number.isFinite(d.ageMonths) ? d.ageMonths : NaN,
+        weightKg: Number.isFinite(d.weightKg) ? d.weightKg : NaN,
+        heightCm: Number.isFinite(d.heightCm) ? d.heightCm : NaN,
+        headCircumferenceCm: Number.isFinite(d.headCircumferenceCm)
+          ? d.headCircumferenceCm
+          : undefined,
+        armCircumferenceCm: Number.isFinite(d.armCircumferenceCm)
+          ? d.armCircumferenceCm
+          : undefined,
+      });
+    } catch {
+      // ignore — sessionStorage may be blocked in private mode.
+    } finally {
+      setDraftRestored(true);
+    }
+  }, [draftRestored, reset]);
 
   const ageOutOfRange =
     errors.ageMonths?.message &&
@@ -95,11 +130,8 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
           className="flex flex-col gap-5"
         >
           <FieldGroup>
-            <p className="text-[13px] text-muted-foreground">
-              Bidang bertanda <span className="text-destructive">*</span> wajib diisi.
-            </p>
 
-            {/* Row 1: Gender | Age (collapses to a single column on narrow cards). */}
+            {/* Row 1: Gender | Weight (collapses to a single column on narrow cards). */}
             <div className={gridClass}>
               <Field data-invalid={!!errors.gender}>
                 <FieldLabel htmlFor="gender" className={fieldLabelClass}>
@@ -134,6 +166,29 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
                 )}
               </Field>
 
+              <Field data-invalid={!!errors.weightKg}>
+                <FieldLabel htmlFor="weightKg" className={fieldLabelClass}>
+                  Berat badan (kg)<RequiredMark />
+                </FieldLabel>
+                <Input
+                  id="weightKg"
+                  type="number"
+                  inputMode="decimal"
+                  step={0.1}
+                  min={1}
+                  max={45}
+                  placeholder="Contoh: 9.5"
+                  aria-invalid={!!errors.weightKg}
+                  {...register("weightKg", { valueAsNumber: true })}
+                />
+                {errors.weightKg && (
+                  <FieldError errors={[errors.weightKg]} />
+                )}
+              </Field>
+            </div>
+
+            {/* Row 2: Age | Height */}
+            <div className={gridClass}>
               <Field data-invalid={!!errors.ageMonths}>
                 <FieldLabel htmlFor="ageMonths" className={fieldLabelClass}>
                   Usia (bulan)<RequiredMark />
@@ -162,29 +217,6 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
                     )}
                     {errors.ageMonths.message}
                   </FieldError>
-                )}
-              </Field>
-            </div>
-
-            {/* Row 2: Weight | Height */}
-            <div className={gridClass}>
-              <Field data-invalid={!!errors.weightKg}>
-                <FieldLabel htmlFor="weightKg" className={fieldLabelClass}>
-                  Berat badan (kg)<RequiredMark />
-                </FieldLabel>
-                <Input
-                  id="weightKg"
-                  type="number"
-                  inputMode="decimal"
-                  step={0.1}
-                  min={1}
-                  max={45}
-                  placeholder="Contoh: 9.5"
-                  aria-invalid={!!errors.weightKg}
-                  {...register("weightKg", { valueAsNumber: true })}
-                />
-                {errors.weightKg && (
-                  <FieldError errors={[errors.weightKg]} />
                 )}
               </Field>
 
@@ -284,7 +316,7 @@ export function CalculatorForm({ onSubmit, isCalculating = false }: Props) {
             </Button>
             {!isValid && !isCalculating && (
               <p className="text-[13px] text-muted-foreground">
-                Lengkapi data yang wajib diisi untuk mengaktifkan tombol.
+                Lengkapi data yang wajib diisi <span className="text-destructive">*</span> untuk melakukan perhitungan.
               </p>
             )}
           </div>

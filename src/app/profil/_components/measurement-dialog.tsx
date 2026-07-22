@@ -40,6 +40,16 @@ interface Props {
   childName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Optional prefill — used by the Home save-flow so the child's input values
+   *  are passed through (draft from sessionStorage / "Simpan" on the result page). */
+  defaults?: {
+    tanggalUkur?: string;
+    beratBadanKg?: number;
+    tinggiBadanCm?: number;
+    lingkarKepalaCm?: number;
+    lingkarLenganCm?: number;
+  };
+  onSaved?: () => void;
 }
 
 const labelClass = "text-[15px] font-medium leading-snug";
@@ -49,6 +59,8 @@ export function MeasurementDialog({
   childName,
   open,
   onOpenChange,
+  defaults,
+  onSaved,
 }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -63,11 +75,11 @@ export function MeasurementDialog({
     mode: "onChange",
     defaultValues: {
       anakId: childId,
-      tanggalUkur: new Date().toISOString().slice(0, 10),
-      beratBadanKg: NaN,
-      tinggiBadanCm: NaN,
-      lingkarKepalaCm: undefined,
-      lingkarLenganCm: undefined,
+      tanggalUkur: defaults?.tanggalUkur ?? new Date().toISOString().slice(0, 10),
+      beratBadanKg: defaults?.beratBadanKg ?? NaN,
+      tinggiBadanCm: defaults?.tinggiBadanCm ?? NaN,
+      lingkarKepalaCm: defaults?.lingkarKepalaCm,
+      lingkarLenganCm: defaults?.lingkarLenganCm,
     },
   });
 
@@ -80,6 +92,7 @@ export function MeasurementDialog({
         return;
       }
       reset();
+      onSaved?.();
       onOpenChange(false);
     });
   }

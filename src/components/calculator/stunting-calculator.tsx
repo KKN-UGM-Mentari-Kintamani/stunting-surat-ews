@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { CalculatorForm } from "@/components/calculator/calculator-form";
 import { ResultSection } from "@/components/calculator/result-section";
+import type { SaveDraft } from "@/components/calculator/save-flow";
 import {
   computeAssessment,
   type Assessment,
@@ -18,17 +19,20 @@ import {
   type Gender,
 } from "@/lib/calc/lms";
 import type { CalculatorFormValues } from "@/lib/calc/schema";
+import type { ChildSummary } from "@/app/profil/_queries";
 
 interface Props {
   isLoggedIn: boolean;
+  anak: ChildSummary[];
 }
 
 interface Echo {
   ageMonths: number;
   gender: Gender;
+  draft: SaveDraft;
 }
 
-export function StuntingCalculator({ isLoggedIn }: Props) {
+export function StuntingCalculator({ isLoggedIn, anak }: Props) {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [echo, setEcho] = useState<Echo | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -52,7 +56,24 @@ export function StuntingCalculator({ isLoggedIn }: Props) {
     try {
       const result = computeAssessment(input);
       setAssessment(result);
-      setEcho({ ageMonths: values.ageMonths, gender: values.gender });
+      setEcho({
+        ageMonths: values.ageMonths,
+        gender: values.gender,
+        draft: {
+          gender: values.gender,
+          ageMonths: values.ageMonths,
+          beratBadanKg: values.weightKg,
+          tinggiBadanCm: values.heightCm,
+          lingkarKepalaCm:
+            typeof values.headCircumferenceCm === "number"
+              ? values.headCircumferenceCm
+              : undefined,
+          lingkarLenganCm:
+            typeof values.armCircumferenceCm === "number"
+              ? values.armCircumferenceCm
+              : undefined,
+        },
+      });
       // Bring the verdict into view after the reveal mounts.
       requestAnimationFrame(() =>
         resultRef.current?.scrollIntoView({
@@ -85,6 +106,8 @@ export function StuntingCalculator({ isLoggedIn }: Props) {
             ageMonths={echo.ageMonths}
             gender={echo.gender}
             isLoggedIn={isLoggedIn}
+            anak={anak}
+            draft={echo.draft}
             onReset={handleReset}
           />
         </div>

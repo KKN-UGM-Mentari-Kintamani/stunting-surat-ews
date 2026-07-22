@@ -5,6 +5,7 @@
  */
 import { Hero } from "@/components/calculator/hero";
 import { StuntingCalculator } from "@/components/calculator/stunting-calculator";
+import { getChildrenSummary } from "@/app/profil/_queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
@@ -19,11 +20,14 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
+  // Light list of children — only when logged in, so the save dialog selection
+  // has data ready without an extra request (saves an RTT on rural connections).
+  const children = isLoggedIn ? (await getChildrenSummary()) ?? [] : [];
 
   return (
     <>
       <Hero />
-      <StuntingCalculator isLoggedIn={isLoggedIn} />
+      <StuntingCalculator isLoggedIn={isLoggedIn} anak={children} />
     </>
   );
 }

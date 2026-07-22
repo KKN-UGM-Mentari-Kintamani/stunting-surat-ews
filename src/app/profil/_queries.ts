@@ -35,6 +35,44 @@ export interface ProfileData {
   children: ChildWithMeasurements[];
 }
 
+export interface ChildSummary {
+  id: string;
+  nama_anak: string;
+  jenis_kelamin: "L" | "P";
+  ageMonthsNow: number;
+  inRange: boolean;
+}
+
+/** Lightweight children list for the Home save-dialog — no measurements fetched. */
+export async function getChildrenSummary(): Promise<ChildSummary[] | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("anak")
+    .select("id, nama_anak, jenis_kelamin, tanggal_lahir")
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("tanggal_lahir", { ascending: true });
+  if (error) {
+    console.error("[queries] getChildrenSummary failed:", error.message);
+    return [];
+  }
+  return (data ?? []).map((a) => {
+    const ageMonthsNow = ageMonthsFromBirth(a.tanggal_lahir);
+    return {
+      id: a.id,
+      nama_anak: a.nama_anak,
+      jenis_kelamin: a.jenis_kelamin,
+      ageMonthsNow,
+      inRange: ageMonthsNow >= 0 && ageMonthsNow <= MAX_AGE_MONTHS,
+    };
+  });
+}
+
 export async function getProfileData(): Promise<ProfileData> {
   const supabase = await createClient();
   const {
