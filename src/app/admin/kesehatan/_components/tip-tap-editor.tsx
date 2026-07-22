@@ -118,7 +118,7 @@ export function TipTapEditor({ content = "", onChange }: Props) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 rounded-t-md border-x border-t border-border bg-muted/50 px-2 py-1.5">
         <Button
-          variant="ghost"
+          type="button"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={cn(btnBase, editor.isActive("bold") && "bg-accent text-accent-foreground")}
@@ -127,7 +127,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
           <span className="sr-only">Tebal</span>
         </Button>
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={cn(btnBase, editor.isActive("italic") && "bg-accent text-accent-foreground")}
@@ -136,7 +137,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
           <span className="sr-only">Miring</span>
         </Button>
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           className={cn(btnBase, editor.isActive("underline") && "bg-accent text-accent-foreground")}
@@ -148,7 +150,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           className={cn(btnBase, editor.isActive("heading", { level: 1 }) && "bg-accent text-accent-foreground")}
@@ -157,7 +160,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
           <span className="sr-only">Judul 1</span>
         </Button>
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           className={cn(btnBase, editor.isActive("heading", { level: 2 }) && "bg-accent text-accent-foreground")}
@@ -166,7 +170,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
           <span className="sr-only">Judul 2</span>
         </Button>
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           className={cn(btnBase, editor.isActive("heading", { level: 3 }) && "bg-accent text-accent-foreground")}
@@ -178,7 +183,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={cn(btnBase, editor.isActive("bulletList") && "bg-accent text-accent-foreground")}
@@ -187,7 +193,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
           <span className="sr-only">Daftar</span>
         </Button>
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           className={cn(btnBase, editor.isActive("orderedList") && "bg-accent text-accent-foreground")}
@@ -199,7 +206,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => { if (!editor) return; if (editor.isActive("link")) removeLink(); else openLinkDialog(); }}
           className={cn(btnBase, editor?.isActive("link") && "bg-accent text-accent-foreground")}
@@ -215,7 +223,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           className={btnBase}
@@ -224,7 +233,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
           <span className="sr-only">Pembatas</span>
         </Button>
         <Button
-          variant="ghost"
+          type="button"
+                    variant="ghost"
           size="icon-xs"
           onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
           className={btnBase}
@@ -236,7 +246,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
 
         <span className="ml-auto flex items-center gap-0.5">
           <Button
-            variant="ghost"
+          type="button"
+                      variant="ghost"
             size="icon-xs"
             onClick={() => editor.chain().focus().undo().run()}
             className={btnBase}
@@ -245,7 +256,8 @@ export function TipTapEditor({ content = "", onChange }: Props) {
             <span className="sr-only">Undo</span>
           </Button>
           <Button
-            variant="ghost"
+          type="button"
+                      variant="ghost"
             size="icon-xs"
             onClick={() => editor.chain().focus().redo().run()}
             className={btnBase}

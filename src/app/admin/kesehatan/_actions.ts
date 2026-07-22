@@ -3,12 +3,12 @@
 /* src/app/admin/kesehatan/_actions.ts
  * Server actions for the cadre CMS. Only kader_kesehatan may call these
  * (enforced by middleware + the layout guard). Thumbnail upload uses the
- * SERVICE_ROLE_KEY client so cadre's RLS-anon client can write to bucket.
+ * regular server client (user session + RLS).
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { AGE_BUCKET_LABEL } from "@/lib/calc/lms";
 
 export type ActionResult =
@@ -159,13 +159,21 @@ export async function publishArticleAction(
 
 /**
  * Upload a single image to the Supabase 'thumbnails' bucket.
- * Uses the service client (SERVICE_ROLE_KEY) so no bucket RLS policy is
- * needed — the upload is entirely server-controlled and already gated by
- * the layout's role check.
+ * Uses the regular server client (user session + RLS). Requires:
  *
- * SETUP REQUIRED (one-time): create a public bucket named 'thumbnails' in
- * Supabase Dashboard → Storage → New Bucket → name: 'thumbnails', ☑ Public bucket.
- * No additional RLS policy is required when using the service client.
+ *   1. Bucket exists: Supabase Dashboard → Storage → New Bucket →
+ *      name 'thumbnails', ☑ Public bucket.
+ *   2. RLS policy on storage.objects:
+ *
+ *      CREATE POLICY "cadre can upload thumbnails"
+ *      ON storage.objects FOR INSERT TO authenticated
+ *      WITH CHECK (
+ *        bucket_id = 'thumbnails'
+ *        AND EXISTS (SELECT 1 FROM public.users u
+ *                    WHERE u.id = auth.uid()
+ *                      AND u.role = 'kader_kesehatan'
+ *                      AND u.deleted_at IS NULL)
+ *      );
  */
 export async function uploadThumbnailAction(
   formData: FormData,
@@ -179,7 +187,7 @@ export async function uploadThumbnailAction(
   }
 
   const bucket = "thumbnails";
-  const supabase = createServiceClient();
+  const supabase = await createClient();
   const path = `cadre-uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
   const { error } = await supabase.storage
@@ -195,6 +203,14 @@ export async function uploadThumbnailAction(
         error:
           "Bucket 'thumbnails' belum dibuat. Buka Supabase Dashboard → " +
           "Storage → New Bucket → nama 'thumbnails', centang Public bucket.",
+      };
+    }
+    if (msg.includes("jws") || msg.includes("token") || msg.includes("auth")) {
+      return {
+        ok: false,
+        error:
+          "Sesi tidak valid. Coba logout lalu login ulang, atau " +
+          "periksa kredensial Supabase di .env.local.",
       };
     }
     return { ok: false, error: `Gagal mengunggah: ${error.message}` };
