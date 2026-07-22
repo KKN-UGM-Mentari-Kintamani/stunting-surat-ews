@@ -46,17 +46,15 @@ function isActive(pathname: string, href: string): boolean {
 
 export function Navbar({ user }: { user: NavbarUser | null }) {
   const pathname = usePathname();
-  // Right-group main menu (exclude authOnly items — those render separately for logged-in users).
+  // Right-group main menu (authOnly items — Profil Saya — only live in the dropdown).
   const menuItems = NAV_ITEMS.filter((i) => i.enabled && !i.authOnly);
-  // The Profile item (authOnly) is rendered as a nav link near the auth block.
-  const profileItem = NAV_ITEMS.find((i) => i.authOnly && i.enabled);
 
   function navLinkClasses(href: string): string {
     const active = isActive(pathname, href);
     return cn(
       "flex h-11 items-center rounded-md px-3 text-[15px] font-medium transition-colors outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring",
       active
-        ? "bg-accent text-accent-foreground"
+        ? "bg-primary/10 text-primary font-semibold"
         : "text-muted-foreground hover:bg-muted hover:text-foreground",
     );
   }
@@ -78,7 +76,7 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
           </span>
         </Link>
 
-        {/* Right: menu (Profil Saya when logged in) + account block / Masuk. */}
+        {/* Right: main menu + account block / Masuk. */}
         <div className="ml-auto flex items-center gap-2">
           <nav aria-label="Navigasi utama" className="flex items-center gap-1">
             {menuItems.map((item) => (
@@ -91,18 +89,6 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
                 {item.label}
               </Link>
             ))}
-            {/* Profil Saya appears here only when logged in (authOnly). */}
-            {user && profileItem && (
-              <Link
-                href={profileItem.href}
-                aria-current={
-                  isActive(pathname, profileItem.href) ? "page" : undefined
-                }
-                className={navLinkClasses(profileItem.href)}
-              >
-                {profileItem.label}
-              </Link>
-            )}
           </nav>
 
           {user ? (

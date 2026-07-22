@@ -6,6 +6,7 @@
  * immediatelyRender:false so the server doesn't try to hydrate a canvas-less
  * editor (tip-tap Next.js compat). Output HTML is stored in `konten_html`.
  */
+import { useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TipTapLink from "@tiptap/extension-link";
@@ -28,13 +29,39 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface Props {
   content?: string;
   onChange?: (html: string) => void;
 }
 
+function sanitizeUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("mailto:") ||
+    trimmed.startsWith("/")
+  ) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export function TipTapEditor({ content = "", onChange }: Props) {
+  const [linkDialog, setLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+
   const editor = useEditor({
     extensions: [StarterKit, TipTapLink, TipTapUnderline],
     content,
@@ -58,16 +85,30 @@ export function TipTapEditor({ content = "", onChange }: Props) {
     );
   }
 
-  function toggleLink() {
-    const ed = editor;
-    if (!ed) return;
-    const prev = ed.getAttributes("link").href;
-    if (prev) {
-      ed.chain().focus().unsetLink().run();
+  function openLinkDialog() {
+    if (!editor) return;
+    const existing = editor.getAttributes("link").href ?? "";
+    setLinkUrl(existing);
+    setLinkDialog(true);
+  }
+
+  function confirmLink() {
+    if (!editor) return;
+    const sanitized = sanitizeUrl(linkUrl);
+    if (sanitized) {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: sanitized }).run();
     } else {
-      const url = window.prompt("Masukkan URL:");
-      if (url) ed.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+      editor.chain().focus().unsetLink().run();
     }
+    setLinkDialog(false);
+    setLinkUrl("");
+  }
+
+  function removeLink() {
+    if (!editor) return;
+    editor.chain().focus().unsetLink().run();
+    setLinkDialog(false);
+    setLinkUrl("");
   }
 
   const btnBase = "h-8 w-8 p-0";
@@ -160,15 +201,15 @@ export function TipTapEditor({ content = "", onChange }: Props) {
         <Button
           variant="ghost"
           size="icon-xs"
-          onClick={toggleLink}
-          className={cn(btnBase, editor.isActive("link") && "bg-accent text-accent-foreground")}
+          onClick={() => { if (!editor) return; if (editor.isActive("link")) removeLink(); else openLinkDialog(); }}
+          className={cn(btnBase, editor?.isActive("link") && "bg-accent text-accent-foreground")}
         >
           {editor.isActive("link") ? (
             <Unlink className="size-4" strokeWidth={1.5} aria-hidden />
           ) : (
             <Link className="size-4" strokeWidth={1.5} aria-hidden />
           )}
-          <span className="sr-only">Tautan</span>
+          <span className="sr-only">{editor.isActive("link") ? "Hapus tautan" : "Tambah tautan"}</span>
         </Button>
 
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
@@ -216,6 +257,31 @@ export function TipTapEditor({ content = "", onChange }: Props) {
       </div>
 
       <EditorContent editor={editor} />
+
+      <Dialog open={linkDialog} onOpenChange={setLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Masukkan tautan</DialogTitle>
+            <DialogDescription>
+              URL akan otomatis ditambahkan https:// jika belum ada.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="https://contoh.com/artikel"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirmLink();
+            }}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLinkDialog(false)}>
+              Batal
+            </Button>
+            <Button onClick={confirmLink}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

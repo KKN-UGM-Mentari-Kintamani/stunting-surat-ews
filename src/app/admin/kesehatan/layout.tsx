@@ -22,7 +22,7 @@ export default async function AdminKesehatanLayout({
 
   const { data: profile } = await supabase
     .from("users")
-    .select("nama_lengkap, role")
+    .select("role")
     .eq("id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -31,7 +31,7 @@ export default async function AdminKesehatanLayout({
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center justify-between gap-4 px-5 md:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center gap-3 px-5 md:px-8">
           <Link
             href="/admin/kesehatan"
             className="flex items-center gap-2"
@@ -43,9 +43,6 @@ export default async function AdminKesehatanLayout({
               Dasbor Posyandu
             </span>
           </Link>
-          <p className="truncate text-[14px] text-muted-foreground">
-            {profile.nama_lengkap} · Kader
-          </p>
         </div>
       </header>
       <div className="mx-auto w-full max-w-[1120px] px-5 pb-16 md:px-8 md:pb-14">

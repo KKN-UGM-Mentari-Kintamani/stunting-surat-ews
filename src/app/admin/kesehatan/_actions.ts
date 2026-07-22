@@ -159,20 +159,13 @@ export async function publishArticleAction(
 
 /**
  * Upload a single image to the Supabase 'thumbnails' bucket.
- * SETUP REQUIRED (manual, one-time): create a public bucket named
- * 'thumbnails' in Supabase Dashboard → Storage → New Bucket → name:
- * 'thumbnails', ☑ Public bucket. Then add this RLS policy in SQL Editor:
+ * Uses the service client (SERVICE_ROLE_KEY) so no bucket RLS policy is
+ * needed — the upload is entirely server-controlled and already gated by
+ * the layout's role check.
  *
- *   CREATE POLICY "cadre can upload thumbnails"
- *   ON storage.objects FOR INSERT TO authenticated
- *   WITH CHECK (
- *     bucket_id = 'thumbnails'
- *     AND auth.role() = 'authenticated'
- *     AND EXISTS (SELECT 1 FROM public.users u
- *                 WHERE u.id = auth.uid()
- *                   AND u.role = 'kader_kesehatan'
- *                   AND u.deleted_at IS NULL)
- *   );
+ * SETUP REQUIRED (one-time): create a public bucket named 'thumbnails' in
+ * Supabase Dashboard → Storage → New Bucket → name: 'thumbnails', ☑ Public bucket.
+ * No additional RLS policy is required when using the service client.
  */
 export async function uploadThumbnailAction(
   formData: FormData,
@@ -186,7 +179,6 @@ export async function uploadThumbnailAction(
   }
 
   const bucket = "thumbnails";
-  // Service client bypasses RLS for storage upload — controlled access here.
   const supabase = createServiceClient();
   const path = `cadre-uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
@@ -196,7 +188,16 @@ export async function uploadThumbnailAction(
 
   if (error) {
     console.error("[actions] uploadThumbnail failed:", error.message);
-    return { ok: false, error: "Gagal mengunggah gambar." };
+    const msg = error.message?.toLowerCase() ?? "";
+    if (msg.includes("bucket") || msg.includes("not found") || msg.includes("row")) {
+      return {
+        ok: false,
+        error:
+          "Bucket 'thumbnails' belum dibuat. Buka Supabase Dashboard → " +
+          "Storage → New Bucket → nama 'thumbnails', centang Public bucket.",
+      };
+    }
+    return { ok: false, error: `Gagal mengunggah: ${error.message}` };
   }
 
   const { data: publicUrlData } = supabase.storage

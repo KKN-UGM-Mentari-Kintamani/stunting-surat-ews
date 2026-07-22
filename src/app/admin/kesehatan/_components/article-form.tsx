@@ -8,7 +8,7 @@
  * construction needed, and the form works even with JS disabled (graceful
  * degradation: editor content just becomes the initial HTML).
  */
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -68,23 +68,12 @@ interface Props {
 
 const labelClass = "text-[15px] font-medium leading-snug";
 
-function toSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 export function ArticleForm({ defaultValues, mode }: Props) {
   const [kontenHtml, setKontenHtml] = useState(defaultValues?.konten_html ?? "");
   const [thumbnailUrl, setThumbnailUrl] = useState(defaultValues?.thumbnail_url ?? "");
   const [published, setPublished] = useState(defaultValues?.published ?? false);
   const [isPending, start] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
-  // Refs for hidden inputs that sync from Radix Select (Radix doesn't emit native name/value).
   const tipeKontenRef = useRef<HTMLInputElement>(null);
   const kategoriUmurRef = useRef<HTMLInputElement>(null);
 
@@ -92,48 +81,40 @@ export function ArticleForm({ defaultValues, mode }: Props) {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors, isValid },
   } = useForm<FormValues>({
     resolver: zodResolver(articleFormSchema),
     mode: "onChange",
     defaultValues: {
       judul: defaultValues?.judul ?? "",
-      slug: defaultValues?.slug ?? "",
       tipe_konten: (defaultValues?.tipe_konten as "artikel_gizi" | "resep_mpasi") ?? undefined,
       kategori_umur: (defaultValues?.kategori_umur as "0-6" | "6-8" | "9-11" | "12-24" | "24-60") ?? undefined,
     },
   });
 
-  const judul = watch("judul");
-
-  // Auto-generate slug from judul (only when slug is empty or untouched).
-  const fillSlug = useCallback(() => {
-    const currentSlug = (document.getElementById("slug-input") as HTMLInputElement)?.value;
-    if (!currentSlug) {
-      setValue("slug", toSlug(judul), { shouldValidate: false });
-    }
-  }, [judul, setValue]);
-
   return (
     <form
-      action={async (formData: FormData) => {
+      onSubmit={handleSubmit(async (values) => {
         setActionError(null);
         if (!isValid) {
           setActionError("Periksa kembali isian formulir.");
           return;
         }
         start(async () => {
+          const fd = new FormData();
+          fd.set("judul", values.judul);
+          fd.set("tipe_konten", values.tipe_konten);
+          fd.set("kategori_umur", values.kategori_umur);
+          fd.set("konten_html", kontenHtml);
+          fd.set("thumbnail_url", thumbnailUrl);
+          fd.set("published", published ? "true" : "false");
           const res =
             mode === "create"
-              ? await createArticleAction(formData)
-              : await updateArticleAction(defaultValues!.id!, formData);
-          // On success, the server action redirects. On failure, show error.
+              ? await createArticleAction(fd)
+              : await updateArticleAction(defaultValues!.id!, fd);
           if (!res.ok) setActionError(res.error);
         });
-      }}
-      // Run client validation first, then submit natively:
-      onSubmit={handleSubmit(() => {})}
+      })}
       className="flex flex-col gap-6"
     >
       {/* Hidden inputs for TipTap editor and thumbnail — synced via state. */}
@@ -156,25 +137,8 @@ export function ArticleForm({ defaultValues, mode }: Props) {
                 placeholder="Contoh: Resep MPASI Bubur Tim Ayam Jagung"
                 aria-invalid={!!errors.judul}
                 {...register("judul")}
-                onBlur={() => fillSlug()}
               />
               {errors.judul && <FieldError errors={[errors.judul]} />}
-            </Field>
-
-            <Field data-invalid={!!errors.slug}>
-              <FieldLabel htmlFor="slug-input" className={labelClass}>
-                Slug URL
-              </FieldLabel>
-              <Input
-                id="slug-input"
-                placeholder="resep-mpasi-bubur-tim-ayam-jagung"
-                aria-invalid={!!errors.slug}
-                {...register("slug")}
-              />
-              <FieldDescription className="text-[13px] leading-relaxed text-muted-foreground">
-                Dihasilkan otomatis dari judul. Bisa diubah manual.
-              </FieldDescription>
-              {errors.slug && <FieldError errors={[errors.slug]} />}
             </Field>
 
             <div className="grid grid-cols-1 gap-5 @md/field-group:grid-cols-2">
