@@ -227,3 +227,48 @@ export const AGE_BUCKET_LABEL: Record<AgeBucket, string> = {
   "12-24": "12–24 Bulan (Masa Transisi Makanan Keluarga)",
   "24-60": "24–60 Bulan (Balita/Prasekolah)",
 };
+
+/* -------------------------------------------------------------------------- *
+ * DB ↔ UI mappers (PRD schema `anak` uses char(1) L/P & `pengukuran.status_hasil`
+ * uses the enum NORMAL|RISIKO_SEDANG|RISIKO_TINGGI). The UI labels from the
+ * home calculator are normal|mild|high; these adapters keep the two namespaces
+ * from leaking into each other.
+ * -------------------------------------------------------------------------- */
+
+/** Age in months from a birth date — the medical single source of truth
+ *  (PRD §5.3 boundary still 0–60; callers must validate). */
+export function ageMonthsFromBirth(tanggalLahir: string | Date): number {
+  const birth = tanggalLahir instanceof Date ? tanggalLahir : new Date(tanggalLahir);
+  if (Number.isNaN(birth.getTime())) {
+    throw new RangeError(`Invalid birth date: ${tanggalLahir}`);
+  }
+  let months =
+    (birth.getFullYear() * 12 + birth.getMonth()) * -1;
+  months += new Date().getFullYear() * 12 + new Date().getMonth();
+  // subtract a month if the day-of-month hasn't been reached yet this month
+  const now = new Date();
+  if (now.getDate() < birth.getDate()) months -= 1;
+  return months;
+}
+
+export type DbStatus = "normal" | "risiko_sedang" | "risiko_tinggi";
+
+export function toDbStatus(ui: StuntingStatus): DbStatus {
+  return ui === "high" ? "risiko_tinggi" : ui === "mild" ? "risiko_sedang" : "normal";
+}
+
+export function dbStatusToUi(db: string): StuntingStatus {
+  if (db === "risiko_tinggi") return "high";
+  if (db === "risiko_sedang") return "mild";
+  return "normal";
+}
+
+export type DbGender = "L" | "P";
+
+export function genderToDb(gender: Gender): DbGender {
+  return gender === "male" ? "L" : "P";
+}
+
+export function dbGenderToUi(db: string): Gender {
+  return db === "L" ? "male" : "female";
+}

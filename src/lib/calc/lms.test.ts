@@ -6,11 +6,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   ageBucketOf,
+  ageMonthsFromBirth,
   classifyStatus,
   computeAssessment,
+  dbGenderToUi,
+  dbStatusToUi,
+  genderToDb,
   getLmsByAge,
   getLmsByHeight,
   idealRange,
+  toDbStatus,
   valueAtZ,
   zScore,
   type LmsParams,
@@ -225,5 +230,52 @@ describe("ageBucketOf (PRD §4.2B)", () => {
 
   it("rejects out-of-range ages", () => {
     expect(() => ageBucketOf(61)).toThrow(RangeError);
+  });
+});
+
+describe("ageMonthsFromBirth", () => {
+  it("computes months from a birth date correctly", () => {
+    // We can't pin exact months for "today", so test the delta between two dates.
+    const recent = new Date();
+    recent.setMonth(recent.getMonth() - 14);
+    expect(ageMonthsFromBirth(recent)).toBeGreaterThanOrEqual(13);
+    expect(ageMonthsFromBirth(recent)).toBeLessThanOrEqual(15);
+  });
+
+  it("rejects invalid dates", () => {
+    expect(() => ageMonthsFromBirth("not-a-date")).toThrow(RangeError);
+    expect(() => ageMonthsFromBirth("")).toThrow(RangeError);
+  });
+
+  it("accepts both string and Date inputs and agrees", () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 24);
+    expect(ageMonthsFromBirth(d.toISOString().slice(0, 10))).toBe(
+      ageMonthsFromBirth(d),
+    );
+  });
+});
+
+describe("DB ↔ UI mappers", () => {
+  it("maps StuntingStatus to the pengukuran.status_hasil enum", () => {
+    expect(toDbStatus("normal")).toBe("normal");
+    expect(toDbStatus("mild")).toBe("risiko_sedang");
+    expect(toDbStatus("high")).toBe("risiko_tinggi");
+  });
+
+  it("round-trips status through toDbStatus then dbStatusToUi", () => {
+    (["normal", "mild", "high"] as const).forEach((ui) => {
+      expect(dbStatusToUi(toDbStatus(ui))).toBe(ui);
+    });
+  });
+
+  it("maps the calculator gender to the anak.jenis_kelamin char(1)", () => {
+    expect(genderToDb("male")).toBe("L");
+    expect(genderToDb("female")).toBe("P");
+  });
+
+  it("round-trips gender through genderToDb then dbGenderToUi", () => {
+    expect(dbGenderToUi(genderToDb("male"))).toBe("male");
+    expect(dbGenderToUi(genderToDb("female"))).toBe("female");
   });
 });
