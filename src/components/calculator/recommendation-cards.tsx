@@ -3,11 +3,14 @@
  * follow the child's age bucket:
  *   - Artikel Gizi   (general nutrition articles)
  *   - Resep MPASI    (complementary feeding recipes)
- * Now uses live data from /edukasi CMS, pre-fetched server-side and grouped
- * by age bucket. Falls back to static placeholders when the CMS is empty.
+ *
+ * When CMS data exists, renders ArticleCard-style cards with thumbnail
+ * placeholder + title, linking directly to the article. Falls back to plain
+ * cards with descriptive text when the CMS is empty. Shows whatever count
+ * is available (1–3 per type) — never pads to a fixed number.
  */
 import Link from "next/link";
-import { ArrowRight, BookOpenText, CookingPot } from "lucide-react";
+import { ArrowRight, BookOpenText, CookingPot, Sprout } from "lucide-react";
 
 import {
   AGE_BUCKET_LABEL,
@@ -15,6 +18,7 @@ import {
   type AgeBucket,
 } from "@/lib/calc/lms";
 import type { ArticleCardData } from "@/app/edukasi/page";
+import { ArticleCard } from "@/app/edukasi/_components/article-card";
 import {
   Card,
   CardContent,
@@ -23,12 +27,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-interface Item {
+interface FallbackItem {
   title: string;
   body: string;
 }
 
-const FALLBACK_ARTICLES: Record<AgeBucket, Item[]> = {
+const FALLBACK_ARTICLES: Record<AgeBucket, FallbackItem[]> = {
   "0-6": [
     { title: "ASI eksklusif 6 bulan pertama", body: "Mengapa ASI cukup tanpa makanan tambahan hingga usia 6 bulan." },
     { title: "Tanda bayi cukup minum ASI", body: "Cara membaca tanda kekenyangan & berat badan naik normal." },
@@ -56,7 +60,7 @@ const FALLBACK_ARTICLES: Record<AgeBucket, Item[]> = {
   ],
 };
 
-const FALLBACK_MPASI: Record<AgeBucket, Item[]> = {
+const FALLBACK_MPASI: Record<AgeBucket, FallbackItem[]> = {
   "0-6": [
     { title: "Hanya ASI", body: "Belum ada resep MPASI pada rentang usia ini — ASI saja sudah cukup." },
     { title: "Menyiapkan kesiapan MPASI", body: "Perbekal diri dengan resep-resep yang akan diperkenalkan di usia 6 bulan." },
@@ -83,30 +87,45 @@ const FALLBACK_MPASI: Record<AgeBucket, Item[]> = {
   ],
 };
 
-function SectionTitle({ title, Icon }: { title: string; Icon: typeof BookOpenText }) {
-  return (
-    <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug">
-      <Icon className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
-      {title}
-    </h3>
-  );
-}
-
 interface Props {
   ageMonths: number;
   edukasiRecs: Record<string, { artikel_gizi: ArticleCardData[]; resep_mpasi: ArticleCardData[] }>;
+}
+
+function LiveGrid({ items, type }: { items: ArticleCardData[]; type: "artikel_gizi" | "resep_mpasi" }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+      {items.map((a) => (
+        <ArticleCard key={a.id} article={a} />
+      ))}
+    </div>
+  );
+}
+
+function FallbackGrid({ items }: { items: FallbackItem[] }) {
+  if (items.length === 0) return <p className="text-[15px] text-muted-foreground py-4">Belum ada konten tersedia.</p>;
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+      {items.map((item) => (
+        <Card key={item.title} size="sm">
+          <CardHeader>
+            <CardTitle className="text-[16px] leading-snug">{item.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription className="text-[15px] leading-relaxed">{item.body}</CardDescription>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export function RecommendationCards({ ageMonths, edukasiRecs }: Props) {
   const bucket = ageBucketOf(ageMonths);
   const liveArticles = edukasiRecs[bucket]?.artikel_gizi ?? [];
   const liveMpasi = edukasiRecs[bucket]?.resep_mpasi ?? [];
-  const articles: Item[] = liveArticles.length > 0
-    ? liveArticles.map((a) => ({ title: a.judul, body: "" }))
-    : FALLBACK_ARTICLES[bucket];
-  const mpasi: Item[] = liveMpasi.length > 0
-    ? liveMpasi.map((a) => ({ title: a.judul, body: "" }))
-    : FALLBACK_MPASI[bucket];
+  const hasLiveContent = liveArticles.length > 0 || liveMpasi.length > 0;
 
   return (
     <section className="flex flex-col gap-6">
@@ -128,41 +147,45 @@ export function RecommendationCards({ ageMonths, edukasiRecs }: Props) {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <SectionTitle title={liveArticles.length > 0 ? "Artikel Gizi" : "Artikel Gizi"} Icon={BookOpenText} />
-        <div className="grid grid-cols-1 gap-4 @md/field-group:grid-cols-3">
-          {articles.map((item) => (
-            <Card key={item.title} size="sm">
-              <CardHeader>
-                <CardTitle className="text-[16px] leading-snug">{item.title}</CardTitle>
-              </CardHeader>
-              {item.body && (
-                <CardContent>
-                  <CardDescription className="text-[15px] leading-relaxed">{item.body}</CardDescription>
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <SectionTitle title={liveMpasi.length > 0 ? "Resep MPASI" : "Resep MPASI"} Icon={CookingPot} />
-        <div className="grid grid-cols-1 gap-4 @md/field-group:grid-cols-3">
-          {mpasi.map((item) => (
-            <Card key={item.title} size="sm">
-              <CardHeader>
-                <CardTitle className="text-[16px] leading-snug">{item.title}</CardTitle>
-              </CardHeader>
-              {item.body && (
-                <CardContent>
-                  <CardDescription className="text-[15px] leading-relaxed">{item.body}</CardDescription>
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
-      </div>
+      {hasLiveContent ? (
+        <>
+          {liveArticles.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug">
+                <BookOpenText className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+                Artikel Gizi
+              </h3>
+              <LiveGrid items={liveArticles} type="artikel_gizi" />
+            </div>
+          )}
+          {liveMpasi.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug">
+                <CookingPot className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+                Resep MPASI
+              </h3>
+              <LiveGrid items={liveMpasi} type="resep_mpasi" />
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-4">
+            <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug">
+              <BookOpenText className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+              Artikel Gizi
+            </h3>
+            <FallbackGrid items={FALLBACK_ARTICLES[bucket]} />
+          </div>
+          <div className="flex flex-col gap-4">
+            <h3 className="flex items-center gap-2 text-[16px] font-semibold leading-snug">
+              <CookingPot className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+              Resep MPASI
+            </h3>
+            <FallbackGrid items={FALLBACK_MPASI[bucket]} />
+          </div>
+        </>
+      )}
     </section>
   );
 }
