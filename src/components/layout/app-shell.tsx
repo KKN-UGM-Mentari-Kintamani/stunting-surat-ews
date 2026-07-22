@@ -46,15 +46,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Slim mobile brand header (bottom tab bar carries navigation). */}
       <header className="flex h-14 items-center border-b border-border bg-background px-5 md:hidden">
-        <Link href="/" className="flex items-center gap-2" aria-label="Portal Desa — beranda">
+        <Link href="/" className="flex items-center" aria-label="Portal Desa — beranda">
           <Image
             src="/Logo.png"
             alt="Portal Desa"
-            width={28}
-            height={28}
+            width={36}
+            height={36}
             className="rounded-md"
           />
-          <span className="font-display text-base font-semibold">Portal Desa</span>
         </Link>
       </header>
 

@@ -34,13 +34,13 @@ export default async function AdminKesehatanLayout({
         <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center gap-3 px-5 md:px-8">
           <Link
             href="/admin/kesehatan"
-            className="flex items-center gap-2"
+            className="flex items-center"
           >
             <Image
               src="/Logo.png"
               alt="Portal Desa"
-              width={28}
-              height={28}
+              width={36}
+              height={36}
               className="rounded-md"
             />
             <span className="font-display text-base font-semibold">

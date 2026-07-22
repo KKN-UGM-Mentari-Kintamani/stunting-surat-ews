@@ -66,19 +66,16 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
         {/* Left: brand only. */}
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-          aria-label="Portal Desa — kembali ke beranda"
+          className="flex items-center rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+          aria-label="Portal Desa — beranda"
         >
           <Image
             src="/Logo.png"
             alt="Portal Desa"
-            width={36}
-            height={36}
+            width={44}
+            height={44}
             className="rounded-md"
           />
-          <span className="font-display text-lg font-semibold text-foreground">
-            Portal Desa
-          </span>
         </Link>
 
         {/* Right: main menu + account block / Masuk. */}
