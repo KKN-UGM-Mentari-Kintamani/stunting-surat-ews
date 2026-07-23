@@ -72,8 +72,8 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
           <Image
             src="/Logo.png"
             alt="Portal Desa"
-            width={44}
-            height={44}
+            width={130}
+            height={130}
             className="rounded-md"
           />
         </Link>

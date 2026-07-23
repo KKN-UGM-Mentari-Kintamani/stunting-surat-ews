@@ -56,4 +56,4 @@
     
 - Add comments only for complex sections (explain _why_ the logic exists, not _what_ the syntax does).
     
-- When you finish building a feature, a page, a debug fix, or anything else significant, always `add` and `commit` with a clear message so the development flow stays legible and easy to follow. Avoid pushing on your own.
+- When you finish building a feature, a page, a debug fix, or anything else significant, always `add` and `commit` with a clear message so the development flow stays legible and easy to follow (no emoticon). Commit related changes together as one logical unit; split independent changes (different features/fixes) into separate commits. Avoid pushing on your own — let the user review and push manually.

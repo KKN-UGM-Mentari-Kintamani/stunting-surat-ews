@@ -128,7 +128,7 @@ export function RecommendationCards({ ageMonths, edukasiRecs }: Props) {
   const hasLiveContent = liveArticles.length > 0 || liveMpasi.length > 0;
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-6 mt-10">
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-[22px] leading-[1.25] font-medium">

@@ -98,7 +98,7 @@ export function SaveFlow({ isLoggedIn, anak, draft }: Props) {
     <>
       <Button variant="default" className="gap-2" onClick={handlePrimaryClick}>
         <Bookmark className="size-4" strokeWidth={1.5} aria-hidden />
-        Simpan ke Riwayat Tumbuh
+        Simpan Riwayat
       </Button>
 
       {/* Guest: prompt login + stash a draft for restore after callback. */}
