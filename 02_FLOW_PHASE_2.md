@@ -274,3 +274,35 @@ Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
 - [ ] Snapshot pattern di semua generate dokumen
 - [ ] TTE di bucket private; PDF di bucket private; signed URL untuk download
 - [ ] Kolom `disetujui_at` + cleanup job retensi PDF 3 hari (pg_cron/script VPS)
+
+---
+
+## 10. Setup Manual (Admin & TTE)
+
+### 10.1. Aktifkan akun `admin_desa`
+
+1. Login Google sekali di website (akun tersebut → role `warga`).
+2. Jalankan `supabase/upgrade_admin_desa.sql` di SQL Editor (ganti email).
+3. Verifikasi: buka `/admin/surat` (login sebagai akun tsb) → masuk dasbor.
+
+### 10.2. Konfigurasi Kepala Desa + TTE placeholder
+
+Belum ada gambar TTE resmi → pakai tanda tangan pengembang sebagai placeholder:
+
+1. Siapkan **PNG transparan** tanda tangan (bisa foto tanda tangan, potong bg-nya).
+2. Upload ke bucket PRIVATE `surat-ttd`:
+   - Dashboard → Storage → `surat-ttd` → Upload → path `ttd.png`.
+3. Set config Kades (via dasbor admin `/admin/surat` nanti, atau SQL sementara):
+   ```sql
+   INSERT INTO public.surat_kades_config (id, nama_kades, nip_kades, jabatan, ttd_cap_url)
+   VALUES (1, 'Nama Kades', NULL, 'Kepala Desa', 'ttd.png')
+   ON CONFLICT (id) DO UPDATE SET ttd_cap_url = EXCLUDED.ttd_cap_url;
+   ```
+4. Ganti `nama_kades` dengan nama asli saat data resmi tersedia.
+
+### 10.3. Env vars
+
+| Tempat | Var |
+|---|---|
+| **Vercel** | `WORKER_URL` (http://VPS_IP:8080), `WORKER_SECRET` |
+| **VPS worker** (`worker/.env`) | `WORKER_SECRET` (sama), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_CONNECTION_STRING`, `CHROMIUM_EXECUTABLE_PATH` |
