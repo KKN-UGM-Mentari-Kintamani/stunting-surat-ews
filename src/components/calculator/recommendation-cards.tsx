@@ -10,7 +10,7 @@
  * is available (1–3 per type) — never pads to a fixed number.
  */
 import Link from "next/link";
-import { ArrowRight, BookOpenText, CookingPot, Sprout } from "lucide-react";
+import { ArrowRight, BookOpenText, CookingPot } from "lucide-react";
 
 import {
   AGE_BUCKET_LABEL,
@@ -92,7 +92,7 @@ interface Props {
   edukasiRecs: Record<string, { artikel_gizi: ArticleCardData[]; resep_mpasi: ArticleCardData[] }>;
 }
 
-function LiveGrid({ items, type }: { items: ArticleCardData[]; type: "artikel_gizi" | "resep_mpasi" }) {
+function LiveGrid({ items }: { items: ArticleCardData[] }) {
   if (items.length === 0) return null;
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -155,7 +155,7 @@ export function RecommendationCards({ ageMonths, edukasiRecs }: Props) {
                 <BookOpenText className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
                 Artikel Gizi
               </h3>
-              <LiveGrid items={liveArticles} type="artikel_gizi" />
+              <LiveGrid items={liveArticles} />
             </div>
           )}
           {liveMpasi.length > 0 && (
@@ -164,7 +164,7 @@ export function RecommendationCards({ ageMonths, edukasiRecs }: Props) {
                 <CookingPot className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
                 Resep MPASI
               </h3>
-              <LiveGrid items={liveMpasi} type="resep_mpasi" />
+              <LiveGrid items={liveMpasi} />
             </div>
           )}
         </>

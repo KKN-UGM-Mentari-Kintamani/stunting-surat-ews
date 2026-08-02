@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Worker is a separate VPS deploy with its own tsconfig/lint.
+    "worker/**",
   ]),
 ]);
 
