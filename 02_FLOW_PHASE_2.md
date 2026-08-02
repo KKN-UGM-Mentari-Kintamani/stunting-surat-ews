@@ -20,30 +20,52 @@
 
 ## 2. Arsitektur & Infrastruktur
 
-### 2.1. VPS (compute) — target minimum
+### 2.1. VPS (compute) — target minimum [REVISION: 1GB]
 
-| Resource | Minimum | Rekomendasi | Alasan |
-|---|---|---|---|
-| RAM | 2 GB | **4 GB** | 2× Chromium Puppeteer (300-500MB/instance) + Node/Next.js (~300MB) + OS (~300MB) |
-| CPU | 1 vCPU | **2 vCPU** | 1 untuk app, 1 untuk render PDF |
-| Disk | 20 GB SSD | 30 GB SSD | Build + Chromium; PDF tidak disimpan di VPS |
-| OS | — | Ubuntu 22.04 LTS | Mudah setup Chromium deps |
+| Resource | Nilai | Alasan |
+|---|---|---|
+| RAM | **1 GB** + swap 1-2 GB | 1× Chromium Puppeteer (~400MB, concurrency = 1 + antrian) + Node/Next.js (~250MB) + OS (~200MB) ≈ 850MB |
+| CPU | 1 vCPU | Cukup untuk beban 5-20 user aktif/hari |
+| Disk | 20 GB SSD | Build + system Chromium; **PDF tidak disimpan di VPS** |
+| OS | Ubuntu 22.04 LTS | Setup Chromium deps via apt |
+
+**Cara mencapai 1GB (tetap Puppeteer, selaras PRD):**
+- Concurrency Puppeteer diturunkan dari 2 → **1** + antrian render (PRD menulis "max 2", tapi beban approve bersamaan di sini rendah — PDF digenerate saat klik "Setujui", bukan saat submit). Ini penghemat terbesar (~-450MB).
+- Pakai **`puppeteer-core` + Chromium dari sistem** (bukan bundle Chromium bawaan; hemat ±170MB disk + deps), dengan flags hemat memori:
+  `--disable-gpu --no-sandbox --disable-dev-shm-usage --disable-extensions`
+- **Reuse browser instance** (PRD §5.1) — tidak `launch()` setiap request.
+- Tambah **swap 1-2GB** sebagai safety net saat peak.
+- Preview surat = React client component (tanpa biaya server); Chromium hanya dipakai untuk PDF final.
 
 ### 2.2. Database & Storage (Supabase Free)
 
 - **DB PostgreSQL** (free 500MB): `warga_profil`, `permohonan_surat`, `master_jenis_surat`, `surat_kades_config`.
 - **Storage buckets:**
-  - `surat-pdf` — **PRIVATE**: PDF final (permanen, tidak pernah dihapus).
+  - `surat-pdf` — **PRIVATE**: PDF final (**sementara — lihat §2.3**, dihapus otomatis 3 hari setelah disetujui).
   - `surat-ttd` — **PRIVATE**: PNG TTE Kades (hanya diakses server).
   - `thumbnails` — **PUBLIC** (dari Phase 1): thumbnail artikel edukasi.
-- **Kapasitas:** estimasi 50 user × 5 surat/tahun = 250 PDF (300KB-1MB) ≈ 75-250MB/tahun → free 1GB cukup 4-13 tahun.
+- **Kapasitas dengan retensi 3 hari:** rata-rata PDF aktif ≈ (surat disetujui per 3 hari) × 0.5MB. Dengan 50 user × 5 surat/tahun ≈ 250 surat/tahun → rata-rata ~2 PDF aktif/tiap 3 hari ≈ **±1-2MB saja dalam storage** — sangat hemat.
 
-### 2.3. Prinsip data
+### 2.3. Prinsip data & retensi PDF
 
 - VPS hanya compute — matinya VPS tidak menghilangkan data.
 - PDF dirender dari `data_isian_snapshot` (Snapshot pattern, Master Doc §3), bukan profil live.
 - `pdf_final_url` menyimpan **path storage**; download lewat **signed URL** (expired ±1 jam) — tidak pernah URL permanen publik.
-- PDF legal = retained permanen (aturan kearsipan desa). Right-to-erasure hanya **anonymize** profil, PDF dipertahankan.
+- **[REVISION] Retensi PDF = 3 hari:** 3 hari setelah `status = 'disetujui'`, PDF **dihapus otomatis** dari bucket `surat-pdf` dan `pdf_final_url` dikosongkan.
+  - **Yang TIDAK hilang:** `data_isian_snapshot` (JSONB) tetap tersimpan di `permohonan_surat` — data surat abadi.
+  - **Verifikasi tetap berfungsi:** `/verifikasi/[kode]` membaca dari `permohonan_surat` (jenis, nomor, tanggal, status, nama ter-mask), **bukan** dari file PDF.
+  - Setelah lewat 3 hari, tombol unduh warga diganti pesan: *"Masa unduh telah berakhir. Silakan hubungi kantor desa."*
+  - **Catatan kepatuhan:** ini menyimpang dari Master Doc §4 (dokumen legal idealnya dipertahankan utk kearsipan). Kompromi: snapshot data tetap ada; hanya artefak PDF yang dibatasi. Warga disarankan menyimpan salinan PDF sebelum masa unduh berakhir.
+- Right-to-erasure: anonymize profil; PDF sudah otomatis dibersihkan dalam 3 hari.
+
+### 2.4. Mekanisme pembersihan PDF (cleanup job)
+
+- Kolom baru `disetujui_at` (timestamptz) di `permohonan_surat`, diisi saat status → `disetujui`.
+- **Cron harian** (Supabase pg_cron atau script di VPS):
+  1. SELECT `permohonan_surat` WHERE `status = 'disetujui'` AND `disetujui_at < now() - interval '3 days'` AND `pdf_final_url IS NOT NULL`.
+  2. Hapus object dari bucket `surat-pdf` (via service role).
+  3. UPDATE `pdf_final_url = NULL` pada row tsb.
+- Idempoten & aman dijalankan ulang (guard `pdf_final_url IS NOT NULL`).
 
 ---
 
@@ -90,11 +112,12 @@
 |---|---|---|
 | `menunggu` | Badge biru-grey "Menunggu" | Menunggu admin |
 | `revisi` | Badge gold "Perlu Revisi" + catatan admin | **Edit & ajukan ulang** (permohonan yang sama, ID tetap) |
-| `disetujui` | Badge hijau "Disetujui" | **Download PDF final** (berisi kode verifikasi) |
+| `disetujui` | Badge hijau "Disetujui" | **Download PDF final** (berisi kode verifikasi) — tersedia **3 hari** sejak disetujui |
 | `ditolak` | Badge merah "Ditolak" + alasan | Tidak bisa edit; buat permohonan baru |
 
 **Case A4a:** Revisi → resubmit: `status` kembali `menunggu`, `catatan_admin` di-reset, riwayat tetap satu entri.
 **Case A4b:** Download PDF via signed URL; tombol disabled jika status belum `disetujui`.
+**Case A4c (masa unduh berakhir):** jika `pdf_final_url` sudah dikosongkan (PDF dihapus setelah 3 hari) → tombol unduh diganti teks *"Masa unduh telah berakhir. Silakan hubungi kantor desa."* Status badge tetap "Disetujui"; verifikasi keaslian tetap berfungsi via `/verifikasi/[kode]`.
 
 ---
 
@@ -130,7 +153,7 @@ Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
 2. **Generate `kode_verifikasi`** — 8 karakter acak (A3F9K2LP), tidak bisa ditebak.
 3. **Sisipkan TTE Kades** — baca dari bucket PRIVATE `surat-ttd` (server only).
 4. **Render PDF via Puppeteer** — data dari `data_isian_snapshot`.
-5. **Simpan** `pdf_final_url` + `status = 'disetujui'` + `admin_verifikator_id`.
+5. **Simpan** `pdf_final_url` + `status = 'disetujui'` + `admin_verifikator_id` + `disetujui_at = now()` (dipakai untuk retensi 3 hari).
 
 **Case B3a (PDF gagal / timeout 15s / OOM):** rollback → status kembali `menunggu`, nomor & kode yang sudah dibuat **dibuang** (tidak dipakai ulang). Admin dapat pesan error.
 **Case B3b (double click):** tombol disabled selama loading → aman.
@@ -204,7 +227,8 @@ Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
 - `data_isian_snapshot` (JSONB — snapshot identitas + field khusus saat submit)
 - `status` (ENUM: `menunggu`, `revisi`, `disetujui`, `ditolak`)
 - `catatan_admin` (text, nullable — wajib saat `revisi`/`ditolak`)
-- `pdf_final_url` (path storage PDF final)
+- `pdf_final_url` (path storage PDF final; **dikosongkan setelah 3 hari**)
+- `disetujui_at` (timestamptz, nullable — diisi saat approve; dasar retensi 3 hari)
 - `deleted_at` (soft delete, Master Doc §3)
 
 ### 7.5. RLS (PRD §6)
@@ -234,6 +258,8 @@ Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
 | 10 | TTE belum dikonfigurasi | Tolak approve dengan pesan |
 | 11 | Nomor surat race (2 admin approve bersamaan) | `SELECT ... FOR UPDATE` per kode_klasifikasi/tahun |
 | 12 | NIK sudah punya akun saat walk-in | Opsi auto-link ke akun warga |
+| 13 | PDF sudah lewat 3 hari (file dihapus) | `pdf_final_url` NULL → tombol unduh diganti "hubungi kantor desa"; verifikasi tetap jalan |
+| 14 | Cleanup job jalan berulang | Idempoten — guard `pdf_final_url IS NOT NULL` |
 
 ---
 
@@ -244,6 +270,7 @@ Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
 - [ ] Tab "Riwayat Surat" aktif di `/profil` (slot sudah di-reserve)
 - [ ] Route middleware: `/layanan-surat/*` → `warga`, `/admin/surat/*` → `admin_desa`, `/verifikasi/*` publik
 - [ ] Tabel baru + RLS + soft delete
-- [ ] Puppeteer setup di VPS (Chromium deps, concurrency max 2, timeout 15s, reuse browser)
+- [ ] Puppeteer setup di VPS (system Chromium, concurrency 1 + antrian, timeout 15s, reuse browser)
 - [ ] Snapshot pattern di semua generate dokumen
 - [ ] TTE di bucket private; PDF di bucket private; signed URL untuk download
+- [ ] Kolom `disetujui_at` + cleanup job retensi PDF 3 hari (pg_cron/script VPS)
