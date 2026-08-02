@@ -71,7 +71,9 @@ CREATE TABLE IF NOT EXISTS public.nomor_surat_counter (
 );
 
 -- ---------- permohonan_surat (central transaction log) ----------
-CREATE TYPE IF NOT EXISTS status_permohonan AS ENUM ('menunggu', 'revisi', 'disetujui', 'ditolak');
+DO $$ BEGIN
+  CREATE TYPE status_permohonan AS ENUM ('menunggu', 'revisi', 'disetujui', 'ditolak');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS public.permohonan_surat (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
