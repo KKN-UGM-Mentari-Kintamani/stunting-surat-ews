@@ -1,0 +1,24 @@
+{
+  "name": "portal-desa-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VPS worker — renders approved village letters to PDF via Puppeteer",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.7",
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "puppeteer-core": "^24.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}
