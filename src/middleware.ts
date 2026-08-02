@@ -19,9 +19,9 @@ interface RouteRule {
 export const ROUTE_PERMISSIONS: RouteRule[] = [
   { pattern: '/profil',            roles: ['warga'],           match: 'exact'  },
   { pattern: '/admin/kesehatan',    roles: ['kader_kesehatan'], match: 'prefix' },
-  // Phase 2 placeholders — uncomment when Phase 2 is active:
-  // { pattern: '/layanan-surat',  roles: ['warga'],            match: 'prefix' },
-  // { pattern: '/admin/surat',    roles: ['admin_desa'],       match: 'prefix' },
+  // Phase 2 — active:
+  { pattern: '/layanan-surat',  roles: ['warga'],            match: 'prefix' },
+  { pattern: '/admin/surat',    roles: ['admin_desa'],       match: 'prefix' },
 ];
 
 async function fetchRole(
@@ -108,6 +108,7 @@ export const config = {
   matcher: [
     '/profil',
     '/admin/kesehatan/:path*',
-    // Phase 2: '/layanan-surat/:path*', '/admin/surat/:path*',
+    '/layanan-surat/:path*',
+    '/admin/surat/:path*',
   ],
 };

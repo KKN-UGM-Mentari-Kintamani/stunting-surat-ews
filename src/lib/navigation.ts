@@ -51,12 +51,12 @@ export const NAV_ITEMS: NavItem[] = [
     enabled: true,
   },
   {
-    // Phase 2 — keep the slot so adding the menu is a flag flip (Master Doc §2).
+    // Phase 2 — active (Master Doc §2).
     href: "/layanan-surat",
     shortLabel: "Surat",
     label: "Layanan Surat",
     icon: FileText,
-    enabled: false,
+    enabled: true,
   },
   {
     href: "/profil",
