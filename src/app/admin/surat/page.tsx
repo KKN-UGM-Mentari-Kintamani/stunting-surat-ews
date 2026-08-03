@@ -1,47 +1,46 @@
 /* src/app/admin/surat/page.tsx
- * Admin Desa — approval queue (antrian menunggu).
+ * Approval queue (PRD §4.2). Server: fetch menunggu list → render client queue.
  */
-import Link from "next/link";
-import { UserCog, UserPlus } from "lucide-react";
-
-import { getApprovalQueueAction, type QueueItem } from "@/app/admin/surat/_actions";
+import { createClient } from "@/lib/supabase/server";
 import { ApprovalQueue } from "@/app/admin/surat/_components/approval-queue";
-import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Dasbor Admin Surat" };
+export const metadata = { title: "Antrian Persetujuan Surat" };
+
+interface QueueItem {
+  id: string;
+  data_isian_snapshot: Record<string, unknown>;
+  created_at: string;
+  jenis_surat: { nama_surat: string; kode_klasifikasi: string };
+}
 
 export default async function AdminSuratPage() {
-  const res = await getApprovalQueueAction("menunggu");
-  const queue: QueueItem[] = res.ok ? (res.data ?? []) : [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("permohonan_surat")
+    .select(
+      "id, data_isian_snapshot, created_at, jenis_surat:master_jenis_surat(nama_surat, kode_klasifikasi)",
+    )
+    .eq("status", "menunggu")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
 
-  return (
-    <div className="flex flex-col gap-8 py-10 md:py-14">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[28px] leading-[1.15] font-semibold">
-            Antrian Persetujuan
-          </h1>
-          <p className="mt-1 text-[15px] text-muted-foreground">
-            Permohonan surat yang menunggu verifikasi.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" className="gap-2">
-            <Link href="/admin/surat/walkin">
-              <UserPlus className="size-4" strokeWidth={1.5} aria-hidden />
-              Buat Walk-In
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <Link href="/admin/surat/config">
-              <UserCog className="size-4" strokeWidth={1.5} aria-hidden />
-              Konfigurasi Kades
-            </Link>
-          </Button>
-        </div>
-      </div>
+  if (error) {
+    console.error("[admin/surat] fetch failed:", error.message);
+    return <p className="py-10 text-destructive">Gagal memuat data.</p>;
+  }
 
-      <ApprovalQueue initialQueue={queue} />
-    </div>
-  );
+  // Flatten nested jenis_surat array from Supabase.
+  const items = ((data ?? []) as unknown as Array<{
+    id: string;
+    data_isian_snapshot: Record<string, unknown>;
+    created_at: string;
+    jenis_surat: { nama_surat: string; kode_klasifikasi: string }[];
+  }>).map((r) => ({
+    id: r.id,
+    data_isian_snapshot: r.data_isian_snapshot,
+    created_at: r.created_at,
+    jenis_surat: r.jenis_surat?.[0] ?? { nama_surat: "—", kode_klasifikasi: "—" },
+  }));
+
+  return <ApprovalQueue items={items as unknown as QueueItem[]} />;
 }

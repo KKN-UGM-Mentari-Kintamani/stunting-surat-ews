@@ -1,29 +1,27 @@
-/* src/app/admin/surat/walkin/page.tsx
- * Admin Desa — buat surat walk-in (warga tanpa akun).
- */
+/* src/app/admin/surat/walkin/page.tsx */
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { WalkInForm } from "@/app/admin/surat/_components/walk-in-form";
-import type { JenisSurat } from "@/app/layanan-surat/_components/letter-request-form";
 
 export const metadata = { title: "Buat Surat Walk-In" };
 
+interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; }
+
 export default async function WalkInPage() {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("master_jenis_surat")
-    .select("id, nama_surat, kode_klasifikasi")
+    .select("id,nama_surat,kode_klasifikasi")
     .eq("is_active", true);
-  if (error) {
-    console.error("[admin/surat/walkin] fetch failed:", error.message);
-  }
-  const jenisSuratList = (data ?? []) as unknown as JenisSurat[];
-
   return (
-    <div className="flex flex-col gap-6 py-10 md:py-14">
-      <h1 className="font-display text-[28px] leading-[1.15] font-semibold">
-        Buat Surat Walk-In
+    <div className="flex flex-col gap-8 py-10 md:py-14">
+      <h1 className="font-display text-[28px] leading-[1.15] font-semibold md:text-[36px]">
+        Buat Surat (Walk-In)
       </h1>
-      <WalkInForm jenisSuratList={jenisSuratList} />
+      <p className="text-[15px] text-muted-foreground">
+        Untuk warga yang datang langsung ke kantor desa tanpa akun online.
+      </p>
+      <WalkInForm jenisSuratList={(data ?? []) as JenisSurat[]} />
     </div>
   );
 }

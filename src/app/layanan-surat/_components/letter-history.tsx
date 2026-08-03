@@ -1,120 +1,152 @@
 "use client";
 
 /* src/app/layanan-surat/_components/letter-history.tsx
- * Riwayat permohonan surat warga + unduh PDF final via signed URL.
- * Empty state per PRD §4.4.
+ * Riwayat pengajuan surat warga — badge status + unduh PDF (signed URL).
+ * Jika PDF sudah dihapus (3 hari), tampilkan pesan "hubungi kantor desa".
  */
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Download, FileText } from "lucide-react";
 
-import { downloadLetterPdfAction } from "@/app/layanan-surat/_actions";
+import { getMyLettersAction, downloadLetterPdfAction } from "@/app/layanan-surat/_actions";
 import type { MyLetterRow } from "@/app/layanan-surat/_actions";
 import { LetterStatusBadge } from "@/components/surat/letter-status-badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
-import { toast } from "sonner";
 
-function fmtDate(s: string): string {
-  return new Date(s).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+export function LetterHistory() {
+  const [rows, setRows] = useState<MyLetterRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [downloading, startDownload] = useTransition();
 
-export function LetterHistory({ rows }: { rows: MyLetterRow[] }) {
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [, start] = useTransition();
-
-  if (rows.length === 0) {
-    return (
-      <div className="flex justify-center py-10">
-        <Empty className="max-w-md text-center">
-          <EmptyTitle>Belum ada riwayat surat</EmptyTitle>
-          <EmptyDescription>
-            Perlu surat administrasi? Ajukan surat pertama Anda di atas.
-          </EmptyDescription>
-        </Empty>
-      </div>
-    );
-  }
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const res = await getMyLettersAction();
+      if (active && res.ok && res.data) {
+        // The nested jenis_surat returns as array from Supabase; flatten.
+        const flat = res.data.map((r) => ({
+          ...r,
+          jenis_surat: (r.jenis_surat as unknown as { nama_surat: string; kode_klasifikasi: string }[] | null)?.[0] ?? null,
+        }));
+        setRows(flat as MyLetterRow[]);
+      }
+      if (active) setLoading(false);
+    })();
+    return () => { active = false; };
+  }, []);
 
   function handleDownload(id: string) {
-    setPendingId(id);
-    start(async () => {
+    startDownload(async () => {
       const res = await downloadLetterPdfAction(id);
-      setPendingId(null);
-      if (res.ok && res.data) {
-        window.open(res.data.url, "_blank");
+      if (!res.ok || !res.data) {
+        alert(res.ok ? "Data tidak tersedia." : res.error);
         return;
       }
-      toast.error(res.ok ? "PDF tidak tersedia." : res.error);
+      if (res.data.expired || !res.data.url) {
+        alert("Masa unduh telah berakhir. Silakan hubungi kantor desa.");
+        return;
+      }
+      window.open(res.data.url, "_blank");
     });
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {rows.map((r) => (
-        <div
-          key={r.id}
-          className="relative flex flex-col gap-3 rounded-md border border-border bg-card p-4 shadow-[0_2px_8px_rgba(43,40,35,0.06)]"
-        >
-          {/* Perforation edge (Design §5.2) — subtle top marker */}
-          <div
-            aria-hidden
-            className="absolute -top-px left-0 right-0 flex justify-between overflow-hidden"
-            style={{
-              maskImage: "linear-gradient(to right, black 4px, transparent 4px)",
-              WebkitMaskImage:
-                "linear-gradient(to right, black 4px, transparent 4px)",
-            }}
-          />
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <p className="font-display text-[16px] font-medium">
-                {r.jenis_surat?.nama_surat ?? "Surat"}
-              </p>
-              <p className="text-[13px] text-muted-foreground">
-                {fmtDate(r.created_at)}
-              </p>
-              {r.nomor_surat_final && (
-                <p className="tabular-data text-[13px] text-muted-foreground">
-                  Nomor: {r.nomor_surat_final}
-                </p>
-              )}
-            </div>
-            <LetterStatusBadge status={r.status as MyLetterRow["status"]} />
-          </div>
-
-          {r.status === "revisi" && r.catatan_admin && (
-            <p className="rounded-sm bg-muted px-3 py-2 text-[13px] leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">Catatan admin: </span>
-              {r.catatan_admin}
-            </p>
-          )}
-          {r.status === "ditolak" && r.catatan_admin && (
-            <p className="rounded-sm bg-muted px-3 py-2 text-[13px] leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">Alasan: </span>
-              {r.catatan_admin}
-            </p>
-          )}
-
-          {r.status === "disetujui" && (
-            <div className="mt-1 flex justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => handleDownload(r.id)}
-                disabled={pendingId === r.id}
+    <Card>
+      <CardHeader>
+        <CardTitle>Riwayat Pengajuan Surat</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-[15px] text-muted-foreground">Memuat…</p>
+        ) : rows.length === 0 ? (
+          <Empty className="text-center">
+            <EmptyTitle>Belum ada pengajuan</EmptyTitle>
+            <EmptyDescription>
+              Pengajuan surat Anda akan tampil di sini.
+            </EmptyDescription>
+          </Empty>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Perforation edge (Design §5.2) on each card */}
+            {rows.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-col gap-3 rounded-md border border-border p-4 shadow-[0_2px_8px_rgba(43,40,35,0.06)]"
+                style={{ borderTop: "2px dashed #E7E1D3" }}
               >
-                <Download className="size-4" strokeWidth={1.5} aria-hidden />
-                {pendingId === r.id ? "Menyiapkan…" : "Unduh PDF"}
-              </Button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex items-start gap-2">
+                    <FileText className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.5} aria-hidden />
+                    <div>
+                      <p className="text-[15px] font-medium leading-snug">
+                        {r.jenis_surat?.nama_surat ?? "Surat"}
+                      </p>
+                      <p className="text-[13px] text-muted-foreground">
+                        {new Date(r.created_at).toLocaleDateString("id-ID", {
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <LetterStatusBadge status={r.status} />
+                </div>
+
+                {r.nomor_surat_final && (
+                  <p className="tabular-data text-[14px] font-medium">
+                    No. {r.nomor_surat_final}
+                  </p>
+                )}
+
+                {r.status === "revisi" && r.catatan_admin && (
+                  <div className="rounded-sm bg-status-revision-bg px-3 py-2 text-[14px] text-status-revision-fg">
+                    <span className="font-medium">Catatan revisi: </span>
+                    {r.catatan_admin}
+                  </div>
+                )}
+
+                {r.status === "ditolak" && r.catatan_admin && (
+                  <div className="rounded-sm bg-status-rejected-bg px-3 py-2 text-[14px] text-status-rejected-fg">
+                    <span className="font-medium">Alasan: </span>
+                    {r.catatan_admin}
+                  </div>
+                )}
+
+                {r.status === "disetujui" && (
+                  <div className="flex items-center gap-2">
+                    {r.pdf_final_url ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={downloading}
+                        onClick={() => handleDownload(r.id)}
+                      >
+                        <Download className="size-4" strokeWidth={1.5} aria-hidden />
+                        Unduh PDF
+                      </Button>
+                    ) : (
+                      <p className="text-[13px] text-muted-foreground">
+                        Masa unduh telah berakhir. Silakan hubungi kantor desa.
+                      </p>
+                    )}
+                    {r.kode_verifikasi && (
+                      <span className="tabular-data text-[13px] text-muted-foreground">
+                        Kode: {r.kode_verifikasi}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

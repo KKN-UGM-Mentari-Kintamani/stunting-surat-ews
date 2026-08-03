@@ -303,31 +303,38 @@ export async function updateKadesConfigAction(input: {
   return { ok: true };
 }
 
+// ---------- TTE upload ----------
+
 /**
- * Uploads the Kades TTE image (PNG) to the PRIVATE `surat-ttd` bucket via the
- * service client (server-only — never exposed as a public URL). Returns the
- * storage path to store in surat_kades_config.ttd_cap_url.
+ * Upload Kades signature/stamp to the PRIVATE 'surat-ttd' bucket.
+ * Returns the storage path (stored in surat_kades_config.ttd_cap_url).
+ * Compression is done client-side before upload (browser-image-compression).
  */
 export async function uploadTteAction(
   formData: FormData,
-): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+): Promise<{ ok: false; error: string } | { ok: true; path: string }> {
   try {
     await assertAdmin();
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Akses ditolak" };
   }
   const file = formData.get("file") as File | null;
-  if (!file || !(file instanceof File)) return { ok: false, error: "File tidak ditemukan." };
-  if (!file.type.startsWith("image/")) return { ok: false, error: "File harus berupa gambar." };
+  if (!file || !(file instanceof File)) {
+    return { ok: false, error: "File tidak ditemukan." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "File harus berupa gambar." };
+  }
 
-  const svc = createServiceClient();
-  const path = `ttd-${Date.now()}.png`;
-  const { error } = await svc.storage
+  const path = `tte-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const supabase = createServiceClient();
+  const { error } = await supabase.storage
     .from("surat-ttd")
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, file, { upsert: false, contentType: file.type });
+
   if (error) {
     console.error("[admin/surat] uploadTte failed:", error.message);
-    return { ok: false, error: "Gagal mengunggah tanda tangan." };
+    return { ok: false, error: "Gagal mengunggah TTE." };
   }
   return { ok: true, path };
 }

@@ -1,118 +1,113 @@
 /* src/app/verifikasi/[kode]/page.tsx
- * Public document authenticity check (PRD §4.3). Shows minimal info with a
- * masked name — never NIK/KK/address. Uses the SECURITY DEFINER function via
- * service client (no user session).
+ * Public verification result (PRD §4.3). Calls fn_verifikasi_surat via the
+ * service client (the function is granted to authenticated only; this page
+ * is public, so service client is the reliable path — the function only
+ * exposes masked non-sensitive data, no NIK/KK/address).
+ *
+ * Perforation edge is applied to the card as the signature element of the
+ * letter module (Design §5.2).
  */
-import Link from "next/link";
-import { FileCheck, FileX, ShieldCheck } from "lucide-react";
+import type { Metadata } from "next";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
-export const metadata = { title: "Verifikasi Surat" };
+export const metadata: Metadata = {
+  title: "Verifikasi Surat",
+  description: "Cek keaslian surat dari Desa Kintamani.",
+};
 
 interface VerifResult {
   kode_verifikasi: string;
   nama_surat: string;
   nomor_surat: string;
-  tanggal_terbit: string;
+  tanggal_terbit: string | null;
   status_verif: string;
-  nama_pemohon_masked: string;
+  nama_pemohon_masked: string | null;
 }
 
-export default async function VerifikasiPage({
+export default async function VerifikasiDetailPage({
   params,
 }: {
   params: Promise<{ kode: string }>;
 }) {
   const { kode } = await params;
-  const upper = kode.toUpperCase();
-
   const supabase = createServiceClient();
-  const { data, error } = await supabase.rpc("fn_verifikasi_surat", { kode: upper });
-  const found = (!error && data && data.length > 0 ? (data[0] as VerifResult) : null);
+  const { data, error } = await supabase.rpc("fn_verifikasi_surat", {
+    kode: kode.toUpperCase(),
+  });
+
+  const result = (data?.[0] as VerifResult | undefined) ?? null;
+  const isValid = result?.status_verif === "valid";
 
   return (
-    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-5 py-14 md:px-8">
-      <div className="text-center">
-        <span className="mb-3 inline-flex size-12 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <ShieldCheck className="size-6" strokeWidth={1.5} aria-hidden />
-        </span>
-        <h1 className="font-display text-[28px] leading-[1.15] font-semibold">
-          Verifikasi Keaslian Surat
-        </h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">
-          Kode: <span className="tabular-data font-mono font-semibold">{upper}</span>
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-[1120px] flex-col items-center gap-6 px-5 py-16 md:px-8">
+      {/* Perforation edge (Design §5.2) on the card */}
+      <Card
+        className="w-full max-w-md"
+        style={{ borderTop: "2px dashed #E7E1D3" }}
+      >
+        <CardContent className="flex flex-col items-center gap-4 pt-8">
+          {error || !result ? (
+            <>
+              <XCircle className="size-12 text-status-rejected-fg" strokeWidth={1.5} aria-hidden />
+              <h1 className="font-display text-[22px] font-semibold text-foreground">
+                Kode Tidak Ditemukan
+              </h1>
+              <p className="text-center text-[15px] text-muted-foreground">
+                Kode verifikasi &quot;{kode}&quot; tidak terdaftar. Periksa kembali
+                kode pada surat, atau hubungi kantor desa.
+              </p>
+            </>
+          ) : (
+            <>
+              {isValid ? (
+                <CheckCircle2 className="size-12 text-status-normal-fg" strokeWidth={1.5} aria-hidden />
+              ) : (
+                <XCircle className="size-12 text-status-rejected-fg" strokeWidth={1.5} aria-hidden />
+              )}
 
-      {!found ? (
-        <Alert variant="destructive">
-          <FileX aria-hidden />
-          <AlertTitle>Kode Tidak Ditemukan</AlertTitle>
-          <AlertDescription>
-            Kode verifikasi tidak valid atau surat tidak terdaftar. Periksa kembali
-            kode pada dokumen Anda.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <>
-          <Alert>
-            <FileCheck aria-hidden />
-            <AlertTitle>Dokumen Valid</AlertTitle>
-            <AlertDescription>
-              Surat ini terdaftar dan diterbitkan secara resmi oleh desa.
-            </AlertDescription>
-          </Alert>
+              <h1 className="font-display text-[22px] font-semibold text-foreground">
+                {isValid ? "Dokumen Valid" : "Dokumen Tidak Valid"}
+              </h1>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-status-normal-fg" aria-hidden />
-                Informasi Surat
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="flex flex-col gap-3 text-[15px]">
+              <dl className="flex w-full flex-col gap-3 text-[15px]">
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Jenis Surat</dt>
-                  <dd className="text-right font-medium">{found.nama_surat}</dd>
+                  <dd className="text-right font-medium">{result.nama_surat}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Nomor Surat</dt>
-                  <dd className="tabular-data text-right font-medium">{found.nomor_surat}</dd>
+                  <dd className="tabular-data text-right font-medium">
+                    {result.nomor_surat ?? "—"}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Tanggal Terbit</dt>
-                  <dd className="tabular-data text-right">
-                    {new Date(found.tanggal_terbit).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
+                  <dd className="text-right font-medium">
+                    {result.tanggal_terbit
+                      ? new Date(result.tanggal_terbit).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "—"}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Atas Nama</dt>
-                  <dd className="text-right font-medium">{found.nama_pemohon_masked}</dd>
+                  <dd className="text-right font-medium">{result.nama_pemohon_masked ?? "—"}</dd>
+                </div>
+                <div className="flex justify-between gap-4 border-t border-border pt-3">
+                  <dt className="text-muted-foreground">Kode Verifikasi</dt>
+                  <dd className="tabular-data text-right font-medium">{result.kode_verifikasi}</dd>
                 </div>
               </dl>
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      <p className="text-center text-[13px] text-muted-foreground">
-        <Link href="/" className="font-medium text-secondary underline-offset-4 hover:underline">
-          Kembali ke Portal Desa
-        </Link>
-      </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

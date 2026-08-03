@@ -16,9 +16,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // fn_verifikasi_surat is SECURITY DEFINER and granted to `authenticated` only.
-  // This is a public route (no session) → use the service client, which bypasses
-  // RLS. The function itself returns ONLY minimal masked info — never NIK/KK.
+  // fn_verifikasi_surat is granted to authenticated only → use service client
+  // (server-side, safe — the function only exposes masked non-sensitive data).
   const supabase = createServiceClient();
   const { data, error } = await supabase.rpc("fn_verifikasi_surat", {
     kode: kode.toUpperCase(),

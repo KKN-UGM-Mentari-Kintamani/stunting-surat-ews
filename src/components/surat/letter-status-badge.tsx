@@ -1,57 +1,64 @@
 /* src/components/surat/letter-status-badge.tsx
- * Status badge untuk modul surat (Design §1.3). NEVER color-only: selalu
- * ikon + label. Warna pastel; "Disetujui" reuse green "Normal" — satu bahasa
- * visual untuk "hasil baik" di seluruh portal.
+ * Badge untuk status permohonan surat (Design §1.3, §6.3).
+ * Pastel + ikon + label — tidak hanya warna (aksesibilitas).
+ *
+ * Token mapping:
+ *   menunggu   → waiting (biru-grey)
+ *   revisi     → revision (gold)
+ *   disetujui  → normal (hijau, reuse health normal token per Design §1.3)
+ *   ditolak    → rejected (merah-bata)
  */
-import { Clock, PencilLine, FileCheck, FileX } from "lucide-react";
+import { Check, Clock, FileEdit, XCircle } from "lucide-react";
 
 import type { StatusPermohonan } from "@/lib/surat/types";
 import { cn } from "@/lib/utils";
 
-const STATUS: Record<
-  StatusPermohonan,
-  { label: string; Icon: typeof Clock; className: string }
-> = {
+interface Props {
+  status: StatusPermohonan | string;
+  className?: string;
+}
+
+/** Also handles a transient "processing" pseudo-status for the admin UI. */
+const STATUS_MAP: Record<string, { label: string; Icon: typeof Clock; tone: string }> = {
   menunggu: {
     label: "Menunggu",
     Icon: Clock,
-    className: "bg-status-waiting-bg text-status-waiting-fg",
+    tone: "bg-status-waiting-bg text-status-waiting-fg",
+  },
+  proses: {
+    label: "Menerbitkan…",
+    Icon: Clock,
+    tone: "bg-status-waiting-bg text-status-waiting-fg",
   },
   revisi: {
     label: "Perlu Revisi",
-    Icon: PencilLine,
-    className: "bg-status-revision-bg text-status-revision-fg",
+    Icon: FileEdit,
+    tone: "bg-status-revision-bg text-status-revision-fg",
   },
   disetujui: {
     label: "Disetujui",
-    Icon: FileCheck,
-    className: "bg-status-normal-bg text-status-normal-fg",
+    Icon: Check,
+    tone: "bg-status-normal-bg text-status-normal-fg",
   },
   ditolak: {
     label: "Ditolak",
-    Icon: FileX,
-    className: "bg-status-rejected-bg text-status-rejected-fg",
+    Icon: XCircle,
+    tone: "bg-status-rejected-bg text-status-rejected-fg",
   },
 };
 
-export function LetterStatusBadge({
-  status,
-  className,
-}: {
-  status: StatusPermohonan;
-  className?: string;
-}) {
-  const { label, Icon, className: tone } = STATUS[status];
+export function LetterStatusBadge({ status, className }: Props) {
+  const entry = STATUS_MAP[status] ?? STATUS_MAP.menunggu;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[14px] font-medium",
-        tone,
+        "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-[15px] font-medium",
+        entry.tone,
         className,
       )}
     >
-      <Icon className="size-4" strokeWidth={1.5} aria-hidden />
-      {label}
+      <entry.Icon className="size-4" strokeWidth={1.5} aria-hidden />
+      {entry.label}
     </span>
   );
 }

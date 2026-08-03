@@ -7,7 +7,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import type { IsianSnapshot, StatusPermohonan, WargaProfilData } from "@/lib/surat/types";
+import type { IsianSnapshot, WargaProfilData } from "@/lib/surat/types";
 
 export type ActionResult<T = void> =
   | { ok: true; data?: T }
@@ -114,7 +114,7 @@ export async function submitPermohonanAction(
 
 export interface MyLetterRow {
   id: string;
-  status: StatusPermohonan;
+  status: string;
   catatan_admin: string | null;
   nomor_surat_final: string | null;
   kode_verifikasi: string | null;
@@ -145,41 +145,44 @@ export async function getMyLettersAction(): Promise<ActionResult<MyLetterRow[]>>
   return { ok: true, data: (data ?? []) as unknown as MyLetterRow[] };
 }
 
-// ---------- Download final PDF ----------
+// ---------- Download PDF (signed URL, 1h expiry) ----------
 
 /**
- * Generates a short-lived signed URL for the citizen's approved PDF (private
- * bucket). Verifies ownership first (RLS: user_id = auth.uid()).
- * Returns null when the PDF has been purged (>3 days retention).
+ * Generates a short-lived signed URL for downloading the approved letter PDF
+ * from the PRIVATE surat-pdf bucket. Verifies the requesting user owns the
+ * letter before generating the URL. Returns null if PDF has been purged
+ * (3-day retention) or the letter is not yet approved.
  */
 export async function downloadLetterPdfAction(
   permohonanId: string,
-): Promise<ActionResult<{ url: string }>> {
+): Promise<ActionResult<{ url: string | null; expired: boolean }>> {
   const userId = await getAuthUserId();
   if (!userId) return { ok: false, error: "Sesi berakhir." };
 
+  // Verify ownership + that PDF still exists.
   const supabase = await createClient();
   const { data: row, error } = await supabase
     .from("permohonan_surat")
-    .select("pdf_final_url, status")
+    .select("pdf_final_url, status, user_id")
     .eq("id", permohonanId)
     .eq("user_id", userId)
     .is("deleted_at", null)
     .maybeSingle();
   if (error || !row) return { ok: false, error: "Surat tidak ditemukan." };
-  if (row.status !== "disetujui" || !row.pdf_final_url) {
-    return {
-      ok: false,
-      error: "PDF belum tersedia. Hubungi kantor desa bila masa unduh telah berakhir.",
-    };
+  if (row.status !== "disetujui") return { ok: false, error: "Surat belum disetujui." };
+  if (!row.pdf_final_url) {
+    return { ok: true, data: { url: null, expired: true } };
   }
 
-  const svc = createServiceClient();
-  const { data: signed, error: signedErr } = await svc.storage
+  // Service client generates the signed URL (bucket is private).
+  const service = createServiceClient();
+  const { data, error: urlErr } = await service.storage
     .from("surat-pdf")
-    .createSignedUrl(row.pdf_final_url, 3600);
-  if (signedErr || !signed?.signedUrl) {
+    .createSignedUrl(row.pdf_final_url, 3600); // 1 hour
+
+  if (urlErr || !data?.signedUrl) {
+    console.error("[layanan-surat] signedUrl failed:", urlErr?.message);
     return { ok: false, error: "Gagal membuat tautan unduh." };
   }
-  return { ok: true, data: { url: signed.signedUrl } };
+  return { ok: true, data: { url: data.signedUrl, expired: false } };
 }
