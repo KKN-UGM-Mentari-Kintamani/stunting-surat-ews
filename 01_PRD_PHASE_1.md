@@ -101,7 +101,7 @@ Using a clean interface approach focused on mobile devices (*Mobile-First Design
 - Access is strictly limited using Middleware based on `role` type (`kader_kesehatan` only — see Route Permission Matrix in Master Doc).
 - **Statistics Dashboard:** Summary of registered children count and village nutritional status aggregate.
 - **Content Management (Education):** Input form (CRUD) with a simple *WYSIWYG editor*. Includes format validation and automatic image compression (max 2MB) before uploading to cloud *storage*.
-- **Village Growth Log:** *Read-only* table for cadres to see the list of high-risk children and their historical data.
+- **Village Growth Log:** *Read-only* table for cadres to see the list of high-risk children and their historical data. *[REVISION: sementara ditunda (belum dibangun pada Frontend Phase 1); akan menyusul sebagai enhancement setelah fase ini.]*
 
 ### 4.3. UX States
 
@@ -122,7 +122,7 @@ When a citizen registers for the first time (or when first accessing features re
 ### 5.1. Core Technology
 
 - **Frontend/Backend:** Next.js (App Router) + Tailwind CSS + shadcn/ui.
-- **Authentication:** Auth.js (NextAuth) with Google Provider.
+- **Authentication:** Supabase Auth (Google OAuth via `@supabase/ssr`). *[DEVIATION — REVISION: versi 4.x menulis Auth.js/NextAuth; implementasi memakai Supabase Auth karena backend/middleware/RLS dibangun di atas @supabase/ssr, lihat Revisi 4.2.]*
 - **Database:** PostgreSQL (via Supabase).
 - **Visualization:** Chart.js.
 
@@ -207,3 +207,4 @@ Marketing strategy does not only rely on *offline* socialization, but also the i
 | 3.0 | Restructured reference architecture, added SEO parameters and user profile. |
 | 4.0 | Role enum synchronization with Phase 2 (§4.1, §5.2, §8), added 0-60 months LMS age boundary validation (§4.2, §5.3), added consent & personal data compliance (§4.4, §6), changed admin panel path to `/admin/kesehatan` (§4.2D), added soft delete (§5.2), linked to cross-phase consistency master document. |
 | 4.1 | §5.3 / §5.2 update: `hcfa`+`acfa` promoted from "future backup" to **optional screening inputs** on the calculator form (with extra `z_score_lingkar_kepala` / `z_score_lingkar_lengan` columns in `pengukuran`). Main stunting verdict still driven by `wfa`/`lhfa`/`bmi` only. |
+| 4.2 | **Implementation reconciliation (Frontend Phase 1 + Phase 2 backend):** §5.1 Auth direvisi ke **Supabase Auth** (bukan Auth.js/NextAuth) — konsisten dgn backend @supabase/ssr, middleware, RLS; §4.2D Village Growth Log ditunda; navigasi §4.1 direvisi ke data-driven `NAV_ITEMS` dengan logo kiri + menu kanan & "Profil Saya" di dropdown (detail di Design.md Revisi 1.1–1.2 & Master Doc §2). |

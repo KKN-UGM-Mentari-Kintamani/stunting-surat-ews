@@ -105,7 +105,9 @@ This system deliberately limits itself to **only 2 font families** (not 3), beca
 
 ### 2.2. Font Performance
 
-- Only load the 2 font families above, maximum 2 weights each (Regular + SemiBold/Medium) — not the entire range of available weights.
+- Load the 2 font families above with **only the weights the type scale requires** (§2.1), not the entire range:
+    - **Literata** (display): Medium (500) + SemiBold (600) — 2 weights.
+    - **Plus Jakarta Sans** (body): Regular (400) + Medium (500, untuk Label/Button) + SemiBold (600, untuk H3) — 3 weights. *(Revisi: §2.1 membutuhkan Medium untuk label & SemiBold untuk H3, sehingga "max 2 weights" di versi 1.0 diperbaiki menjadi 3 untuk body.)*
     
 - Use `font-display: swap` and subset Latin + Indonesian characters (no need to subset Cyrillic/Greek etc.).
     
@@ -396,3 +398,6 @@ Three visual patterns that most often emerge as defaults from generative AI tool
 |---|---|
 |**Version**|**Changes**|
 |1.0|Initial version — compiled based on the entire Phase 1 & Phase 2 PRDs and their revisions (health status pastel colors, "My Profile" naming, `/edukasi` structure, and all RBAC/navigation decisions in the `00_MASTER_CROSS_PHASE_CONSISTENCY.md` master consistency document).|
+|1.1|**Implementation reconciliation (Frontend Phase 1):**<br/>- §2.2: Jakarta Sans dimuat **3 weight** (400/500/600) bukan "max 2" — karena §2.1 memerlukan Medium (label) + SemiBold (H3). Literata tetap 2 weight (500/600).<br/>- §8: Empty state memakai komponen shadcn `Empty` (ikon sederhana) sebagai pengganti ilustrasi flat — diterima sebagai penyederhanaan ringan, bukan melanggar prinsip "calm".<br/>- §5.1: Calculator berjalan **instan (O(1), tanpa jaringan)** sehingga animasi "growth line" sebagai loading tidak diperlukan; transisi hasil tetap memakai fade+slide dengan `prefers-reduced-motion` fallback.<br/>- §3.3: Desktop navbar memakai layout **logo di kiri, seluruh menu di kanan** (keputusan iterasi UI); mobile bottom tab 4 item sesuai spec.|
+|1.2|**Deviations from Phase 1 PRD (recorded for consistency):**<br/>- Auth memakai **Supabase Auth** (Google OAuth via @supabase/ssr), bukan Auth.js/NextAuth (PRD §5.1) — demi konsistensi dengan backend/middleware/RLS yang sudah dibangun.<br/>- Village Growth Log (PRD §4.2D, tabel read-only anak berisiko) **belum dibangun** — ditunda.|
+|1.3|**Phase 2 (Layanan Surat):** menambahkan semantik status surat (§1.3) yang telah dipetakan ke token `--status-*`; retensi PDF 3 hari (deviasi dari Master Doc §4, dicatat di `02_FLOW_PHASE_2.md`).|

@@ -40,7 +40,7 @@ Middleware **no longer hardcodes a single role per prefix**. Instead, it reads t
 
 ## 2. Unified Navigation (Update from `01_PRD_PHASE_1.md` §4.1)
 
-The "Letter Service" menu is **integrated into the main navbar** alongside the stunting calculator & education, not as a separate application:
+The "Letter Service" menu is **integrated into the main navbar** alongside the stunting calculator & education, not as a separate application. **Layout (iterasi UI, tercatat di Design.md Revisi 1.1): logo di kiri, seluruh menu di kanan.** Item navigasi:
 
 1. Village Logo
     
@@ -50,14 +50,15 @@ The "Letter Service" menu is **integrated into the main navbar** alongside the s
     
 4. **Letter Service** _(new — appears once Phase 2 is active)_
     
-5. Auth/Profile → dropdown: **"My Profile"** (label changed from "Mother's Dashboard" to be gender-neutral, consistent with the term "warga" used throughout the system, and avoiding mixing English terms like "User"), "Logout"
+5. Auth/Profile → dropdown: **"My Profile"** (label changed from "Mother's Dashboard" to be gender-neutral, consistent with the term "warga" used throughout the system, and avoiding mixing English terms like "User"), "Logout". *Implementasi: "Profil Saya" tampil di dropdown akun (tidak sebagai link menu utama) — keputusan iterasi UI.*
     
 6. Hidden Menu (role-based):
     
-    - "Posyandu Dashboard" → appears if `role = kader_kesehatan`
+    - "Dasbor Posyandu" → appears if `role = kader_kesehatan`
         
-    - "Letter Admin Dashboard" → appears if `role = admin_desa`
+    - "Dasbor Admin Surat" → appears if `role = admin_desa`
         
+
 
 `/profil` (citizen dashboard) remains a single page, adding a "Letter History" tab next to the "Child Growth History" tab — avoiding a separate dashboard so citizens are not confused by having two "profiles".
 
