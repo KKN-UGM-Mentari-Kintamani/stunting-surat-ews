@@ -193,8 +193,15 @@ async function renderAndApprove(
         contentType: "application/pdf",
       });
     if (upErr) {
-      console.error("[admin/surat] PDF upload failed:", upErr.message);
-      return { ok: false, error: "Gagal mengunggah PDF. Coba lagi." };
+      console.error("[admin/surat] PDF upload failed:", upErr.message, upErr.statusCode ?? "");
+      const msg = (upErr.message ?? "").toLowerCase();
+      if (msg.includes("jwt") || msg.includes("jws") || msg.includes("unauthorized") || msg.includes("apikey")) {
+        return { ok: false, error: "Gagal mengunggah PDF: kredensial server tidak valid. Periksa SUPABASE_SERVICE_ROLE_KEY." };
+      }
+      if (msg.includes("bucket") || msg.includes("not found") || msg.includes("resource")) {
+        return { ok: false, error: "Gagal mengunggah PDF: bucket 'surat-pdf' belum ada. Buat di Supabase Storage." };
+      }
+      return { ok: false, error: `Gagal mengunggah PDF: ${upErr.message}` };
     }
 
     // 7. Update counter + mark disetujui (atomically as best-effort).
