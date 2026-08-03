@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const kode = request.nextUrl.searchParams.get("kode");
@@ -16,11 +16,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Using anon server client: the function is SECURITY DEFINER + granted to
-  // authenticated only → use service client to avoid requiring a session.
-  // (REST RPC with anon may be blocked; service role is the reliable path for
-  // this limited, trusted function.)
-  const supabase = await createClient();
+  // fn_verifikasi_surat is SECURITY DEFINER and granted to `authenticated` only.
+  // This is a public route (no session) → use the service client, which bypasses
+  // RLS. The function itself returns ONLY minimal masked info — never NIK/KK.
+  const supabase = createServiceClient();
   const { data, error } = await supabase.rpc("fn_verifikasi_surat", {
     kode: kode.toUpperCase(),
   });

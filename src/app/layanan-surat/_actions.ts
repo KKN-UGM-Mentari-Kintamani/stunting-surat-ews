@@ -6,8 +6,8 @@
  */
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
-import type { IsianSnapshot, WargaProfilData } from "@/lib/surat/types";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import type { IsianSnapshot, StatusPermohonan, WargaProfilData } from "@/lib/surat/types";
 
 export type ActionResult<T = void> =
   | { ok: true; data?: T }
@@ -114,7 +114,7 @@ export async function submitPermohonanAction(
 
 export interface MyLetterRow {
   id: string;
-  status: string;
+  status: StatusPermohonan;
   catatan_admin: string | null;
   nomor_surat_final: string | null;
   kode_verifikasi: string | null;
@@ -143,4 +143,43 @@ export async function getMyLettersAction(): Promise<ActionResult<MyLetterRow[]>>
     return { ok: false, error: "Gagal memuat riwayat surat." };
   }
   return { ok: true, data: (data ?? []) as unknown as MyLetterRow[] };
+}
+
+// ---------- Download final PDF ----------
+
+/**
+ * Generates a short-lived signed URL for the citizen's approved PDF (private
+ * bucket). Verifies ownership first (RLS: user_id = auth.uid()).
+ * Returns null when the PDF has been purged (>3 days retention).
+ */
+export async function downloadLetterPdfAction(
+  permohonanId: string,
+): Promise<ActionResult<{ url: string }>> {
+  const userId = await getAuthUserId();
+  if (!userId) return { ok: false, error: "Sesi berakhir." };
+
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from("permohonan_surat")
+    .select("pdf_final_url, status")
+    .eq("id", permohonanId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error || !row) return { ok: false, error: "Surat tidak ditemukan." };
+  if (row.status !== "disetujui" || !row.pdf_final_url) {
+    return {
+      ok: false,
+      error: "PDF belum tersedia. Hubungi kantor desa bila masa unduh telah berakhir.",
+    };
+  }
+
+  const svc = createServiceClient();
+  const { data: signed, error: signedErr } = await svc.storage
+    .from("surat-pdf")
+    .createSignedUrl(row.pdf_final_url, 3600);
+  if (signedErr || !signed?.signedUrl) {
+    return { ok: false, error: "Gagal membuat tautan unduh." };
+  }
+  return { ok: true, data: { url: signed.signedUrl } };
 }

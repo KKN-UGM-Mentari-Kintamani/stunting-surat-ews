@@ -7,7 +7,7 @@
  */
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getWorkerConfig } from "@/lib/surat/config";
 import type { IsianSnapshot } from "@/lib/surat/types";
 
@@ -301,4 +301,33 @@ export async function updateKadesConfigAction(input: {
   }
   revalidatePath("/admin/surat");
   return { ok: true };
+}
+
+/**
+ * Uploads the Kades TTE image (PNG) to the PRIVATE `surat-ttd` bucket via the
+ * service client (server-only — never exposed as a public URL). Returns the
+ * storage path to store in surat_kades_config.ttd_cap_url.
+ */
+export async function uploadTteAction(
+  formData: FormData,
+): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Akses ditolak" };
+  }
+  const file = formData.get("file") as File | null;
+  if (!file || !(file instanceof File)) return { ok: false, error: "File tidak ditemukan." };
+  if (!file.type.startsWith("image/")) return { ok: false, error: "File harus berupa gambar." };
+
+  const svc = createServiceClient();
+  const path = `ttd-${Date.now()}.png`;
+  const { error } = await svc.storage
+    .from("surat-ttd")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) {
+    console.error("[admin/surat] uploadTte failed:", error.message);
+    return { ok: false, error: "Gagal mengunggah tanda tangan." };
+  }
+  return { ok: true, path };
 }
