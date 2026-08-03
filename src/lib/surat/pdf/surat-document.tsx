@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Image as PdfImage,
   Font,
+  renderToBuffer,
 } from "@react-pdf/renderer";
 import fs from "node:fs";
 import path from "node:path";
@@ -236,7 +237,6 @@ export function SuratDocument({
 
 /** Render helper — keeps renderToBuffer usage in one place. */
 export async function renderSuratPdf(props: Omit<Props, "tanggalTerbit">): Promise<Buffer> {
-  const { renderToBuffer } = await import("@react-pdf/renderer");
   return renderToBuffer(
     <SuratDocument {...props} tanggalTerbit={new Date()} />,
   );
