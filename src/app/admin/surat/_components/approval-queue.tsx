@@ -198,6 +198,31 @@ export function ApprovalQueue({ items }: Props) {
                     </dl>
                   )}
 
+                  {/* Administrative consideration inputs */}
+                  <div className="mt-3 rounded-sm border border-border bg-muted/40 p-3">
+                    <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Pertimbangan Admin
+                    </p>
+                    <dl className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <dt className="text-muted-foreground">Tujuan Permohonan:</dt>
+                        <dd className="font-medium">{getSnap(s, "tujuan_permohonan")}</dd>
+                      </div>
+                      {getSnap(s, "nomor_telepon") && (
+                        <div className="flex flex-wrap gap-2">
+                          <dt className="text-muted-foreground">No. Telepon:</dt>
+                          <dd className="tabular-data">{getSnap(s, "nomor_telepon")}</dd>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <dt className="text-muted-foreground">Pernyataan data benar:</dt>
+                        <dd className={s.pernyataan_benar ? "font-medium text-status-normal-fg" : "font-medium text-status-rejected-fg"}>
+                          {s.pernyataan_benar ? "✓ Sudah dinyatakan" : "✗ Belum dinyatakan"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
                   {done === item.id && (
                     <div className="mt-3 rounded-sm bg-status-normal-bg px-3 py-2 text-[14px] font-medium text-status-normal-fg">
                       Surat berhasil diterbitkan.

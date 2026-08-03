@@ -7,7 +7,12 @@ import type { IsianSnapshot, WargaProfilData } from "@/lib/surat/types";
 
 export function buildSnapshot(
   profil: WargaProfilData,
-  dataKhusus?: Record<string, string>,
+  opts: {
+    dataKhusus?: Record<string, string>;
+    tujuanPermohonan?: string;
+    nomorTelepon?: string;
+    pernyataanBenar?: boolean;
+  } = {},
 ): IsianSnapshot {
   return {
     nik: profil.nik,
@@ -18,7 +23,10 @@ export function buildSnapshot(
     agama: profil.agama,
     pekerjaan: profil.pekerjaan,
     alamat: profil.alamat,
-    data_khusus: dataKhusus,
+    data_khusus: opts.dataKhusus,
+    tujuan_permohonan: opts.tujuanPermohonan,
+    nomor_telepon: opts.nomorTelepon,
+    pernyataan_benar: opts.pernyataanBenar,
   };
 }
 

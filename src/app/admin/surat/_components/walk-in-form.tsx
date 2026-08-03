@@ -30,6 +30,8 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
   const [pekerjaan, setPekerjaan] = useState("");
   const [alamat, setAlamat] = useState("");
   const [noKk, setNoKk] = useState("");
+  const [tujuan, setTujuan] = useState("");
+  const [telepon, setTelepon] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [isPending, start] = useTransition();
@@ -46,9 +48,22 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
       setError("Pilih jenis surat, isi NIK (16 digit) dan nama.");
       return;
     }
+    if (!tujuan.trim()) {
+      setError("Isi tujuan permohonan surat.");
+      return;
+    }
+    if (telepon.trim() && !/^[0-9+\s-]{8,16}$/.test(telepon.trim())) {
+      setError("Nomor telepon tidak valid (8–16 digit).");
+      return;
+    }
     const profil = { ...emptyProfil(), nama, nik, no_kk: noKk, tempat_lahir: tempatLahir, tanggal_lahir: tglLahir, agama, pekerjaan, alamat };
     const dataKhusus = isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined;
-    const snapshot = buildSnapshot(profil, dataKhusus);
+    const snapshot = buildSnapshot(profil, {
+      dataKhusus,
+      tujuanPermohonan: tujuan.trim(),
+      nomorTelepon: telepon.trim() || undefined,
+      pernyataanBenar: true, // Admin confirmed identity at the counter.
+    });
     start(async () => {
       const res = await createWalkInAction(jenisId, snapshot);
       if (!res.ok) { setError(res.error); return; }
@@ -120,6 +135,19 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
                   <Input value={jenisUsaha} onChange={(e) => setJenisUsaha(e.target.value)} /></Field>
               </div>
             )}
+
+            {/* Administrative consideration inputs */}
+            <div className="mt-1 border-t border-border pt-4">
+              <p className="mb-3 text-[13px] font-medium text-muted-foreground">
+                Data ini digunakan perangkat desa untuk menilai permohonan.
+              </p>
+              <Field><FieldLabel className={labelClass}>Tujuan Permohonan Surat *</FieldLabel>
+                <Input value={tujuan} onChange={(e) => setTujuan(e.target.value)}
+                  placeholder="Contoh: Untuk pengajuan bantuan sosial" /></Field>
+              <Field><FieldLabel className={labelClass}>Nomor Telepon</FieldLabel>
+                <Input value={telepon} onChange={(e) => setTelepon(e.target.value)}
+                  inputMode="tel" placeholder="Contoh: 081234567890" /></Field>
+            </div>
           </FieldGroup>
           {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
           <Button type="submit" disabled={isPending} className="gap-2 w-fit">

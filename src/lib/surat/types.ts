@@ -18,6 +18,11 @@ export interface WargaProfilData {
 export interface IsianSnapshot extends WargaProfilData {
   /** Service-specific fields, e.g. { nama_usaha: "..." } for SKU. */
   data_khusus?: Record<string, string>;
+  /** Administrative consideration inputs (shown to the verifier admin). */
+  tujuan_permohonan?: string;
+  nomor_telepon?: string;
+  /** Snapshotted proof that the applicant declared the data true & accountable. */
+  pernyataan_benar?: boolean;
 }
 
 export interface PermohonanListItem {

@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 
 interface JenisSurat {
@@ -58,6 +59,10 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
   const [nik, setNik] = useState(profil.nik);
   const [namaUsaha, setNamaUsaha] = useState("");
   const [jenisUsaha, setJenisUsaha] = useState("");
+  // Admin consideration inputs (shown to the verifier).
+  const [tujuan, setTujuan] = useState("");
+  const [telepon, setTelepon] = useState("");
+  const [pernyataan, setPernyataan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
@@ -69,6 +74,18 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
       setError("Pilih jenis surat dan lengkapi NIK (16 digit) serta nama.");
       return;
     }
+    if (!tujuan.trim()) {
+      setError("Isi tujuan permohonan surat.");
+      return;
+    }
+    if (telepon.trim() && !/^[0-9+\s-]{8,16}$/.test(telepon.trim())) {
+      setError("Nomor telepon tidak valid (8–16 digit).");
+      return;
+    }
+    if (!pernyataan) {
+      setError("Centang pernyataan tanggung jawab untuk melanjutkan.");
+      return;
+    }
     setError(null);
     setStep("preview");
   }
@@ -76,10 +93,12 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
   function handleSubmit() {
     setError(null);
     const dataKhusus = isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined;
-    const snapshot = buildSnapshot(
-      { ...profil, nama, nik },
+    const snapshot = buildSnapshot({ ...profil, nama, nik }, {
       dataKhusus,
-    );
+      tujuanPermohonan: tujuan.trim(),
+      nomorTelepon: telepon.trim() || undefined,
+      pernyataanBenar: pernyataan,
+    });
     start(async () => {
       const res = await submitPermohonanAction(jenisId, snapshot);
       if (!res.ok) {
@@ -94,6 +113,9 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
       setNik(profil.nik);
       setNamaUsaha("");
       setJenisUsaha("");
+      setTujuan("");
+      setTelepon("");
+      setPernyataan(false);
     });
   }
 
@@ -159,6 +181,44 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
                   </Field>
                 </div>
               )}
+
+              {/* Administrative consideration inputs (shown to the verifier admin) */}
+              <div className="mt-1 border-t border-border pt-4">
+                <p className="mb-3 text-[13px] font-medium text-muted-foreground">
+                  Data ini digunakan perangkat desa untuk menilai permohonan Anda.
+                </p>
+                <Field>
+                  <FieldLabel htmlFor="f-tujuan" className={labelClass}>Tujuan Permohonan Surat <span className="text-destructive">*</span></FieldLabel>
+                  <Input id="f-tujuan" value={tujuan} onChange={(e) => setTujuan(e.target.value)}
+                    placeholder="Contoh: Untuk pengajuan bantuan sosial" />
+                </Field>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="f-telepon" className={labelClass}>Nomor Telepon</FieldLabel>
+                    <Input id="f-telepon" value={telepon} onChange={(e) => setTelepon(e.target.value)}
+                      inputMode="tel" placeholder="Contoh: 081234567890" />
+                    <FieldDescription className="text-[13px] text-muted-foreground">
+                      Untuk konfirmasi jika diperlukan.
+                    </FieldDescription>
+                  </Field>
+                </div>
+                <Field orientation="horizontal" className="items-start">
+                  <Checkbox
+                    id="f-pernyataan"
+                    checked={pernyataan}
+                    onCheckedChange={(v) => setPernyataan(v === true)}
+                    className="mt-1"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <FieldLabel htmlFor="f-pernyataan" className={labelClass}>
+                      Saya menyatakan data yang diisi adalah benar &amp; bertanggung jawab penuh <span className="text-destructive">*</span>
+                    </FieldLabel>
+                    <FieldDescription className="text-[13px] text-muted-foreground">
+                      Pemberian keterangan tidak benar dapat dikenakan sanksi sesuai peraturan yang berlaku.
+                    </FieldDescription>
+                  </div>
+                </Field>
+              </div>
             </FieldGroup>
 
             {error && (
@@ -178,10 +238,12 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
           <div className="flex flex-col gap-5">
             <LetterPreview
               namaSurat={selectedType?.nama_surat ?? "—"}
-              snapshot={buildSnapshot(
-                { ...profil, nama, nik },
-                isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined,
-              )}
+              snapshot={buildSnapshot({ ...profil, nama, nik }, {
+                dataKhusus: isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined,
+                tujuanPermohonan: tujuan.trim(),
+                nomorTelepon: telepon.trim() || undefined,
+                pernyataanBenar: pernyataan,
+              })}
             />
 
             {error && (
