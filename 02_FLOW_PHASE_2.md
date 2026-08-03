@@ -20,22 +20,21 @@
 
 ## 2. Arsitektur & Infrastruktur
 
-### 2.1. VPS (compute) — target minimum [REVISION: 1GB]
+### 2.1. Infrastruktur — **[REVISION 3.1: no VPS]**
 
-| Resource | Nilai | Alasan |
+**Tidak ada VPS.** PDF surat dirender **di Vercel (serverless)** via `@react-pdf/renderer` (in-process di server action). Seluruh app berjalan di Vercel; data & file di Supabase.
+
+| Komponen | Lokasi | Catatan |
 |---|---|---|
-| RAM | **1 GB** + swap 1-2 GB | 1× Chromium Puppeteer (~400MB, concurrency = 1 + antrian) + Node/Next.js (~250MB) + OS (~200MB) ≈ 850MB |
-| CPU | 1 vCPU | Cukup untuk beban 5-20 user aktif/hari |
-| Disk | 20 GB SSD | Build + system Chromium; **PDF tidak disimpan di VPS** |
-| OS | Ubuntu 22.04 LTS | Setup Chromium deps via apt |
+| Next.js app (UI + server actions) | Vercel | Satu deployment |
+| PDF render (`renderToBuffer`) | Vercel server action | react-pdf, ~100-200ms |
+| Postgres + Storage | Supabase Free | DB + bucket private |
+| Cron retensi PDF 3 hari | Vercel Cron (Pro) atau Supabase pg_cron | Hapus PDF kedaluwarsa |
 
-**Cara mencapai 1GB (tetap Puppeteer, selaras PRD):**
-- Concurrency Puppeteer diturunkan dari 2 → **1** + antrian render (PRD menulis "max 2", tapi beban approve bersamaan di sini rendah — PDF digenerate saat klik "Setujui", bukan saat submit). Ini penghemat terbesar (~-450MB).
-- Pakai **`puppeteer-core` + Chromium dari sistem** (bukan bundle Chromium bawaan; hemat ±170MB disk + deps), dengan flags hemat memori:
-  `--disable-gpu --no-sandbox --disable-dev-shm-usage --disable-extensions`
-- **Reuse browser instance** (PRD §5.1) — tidak `launch()` setiap request.
-- Tambah **swap 1-2GB** sebagai safety net saat peak.
-- Preview surat = React client component (tanpa biaya server); Chromium hanya dipakai untuk PDF final.
+**Konfigurasi react-pdf di Vercel:**
+- `next.config.ts`: `serverExternalPackages: ["@react-pdf/renderer"]` (fontkit WASM).
+- Render pada **Node runtime** (bukan Edge).
+- Font Liberation Serif disimpan di `public/fonts/` agar ada di bundle serverless.
 
 ### 2.2. Database & Storage (Supabase Free)
 
@@ -48,7 +47,7 @@
 
 ### 2.3. Prinsip data & retensi PDF
 
-- VPS hanya compute — matinya VPS tidak menghilangkan data.
+- Data & PDF disimpan di Supabase (managed) — matinya server lokal tidak menghilangkan data.
 - PDF dirender dari `data_isian_snapshot` (Snapshot pattern, Master Doc §3), bukan profil live.
 - `pdf_final_url` menyimpan **path storage**; download lewat **signed URL** (expired ±1 jam) — tidak pernah URL permanen publik.
 - **[REVISION] Retensi PDF = 3 hari:** 3 hari setelah `status = 'disetujui'`, PDF **dihapus otomatis** dari bucket `surat-pdf` dan `pdf_final_url` dikosongkan.
@@ -143,19 +142,19 @@ Admin buka queue `menunggu`. **3 aksi** (PRD §4.2):
 
 Case B2a: `catatan_admin` kosong → tombol aksi disabled.
 
-### 4.3. Pipeline "Setujui" (transaksi atomik)
+### 4.3. Pipeline "Setujui" (transaksi atomik) — **[REVISION 3.1: react-pdf]**
 
-Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
+Urutan **satu unit kerja** di server action (Vercel); jika gagal di tengah → `processing_at` dibersihkan, status tetap `menunggu`, nomor tidak terpakai:
 
 1. **Generate nomor surat** — `{kode_klasifikasi}/{nomor_urut}/{bulan_romawi}/{tahun}` → `470/012/VII/2026`
-   - Counter **per kode_klasifikasi per tahun** (reset 1 Januari).
-   - **Race condition:** `SELECT ... FOR UPDATE` pada counter row (bukan global lock).
+   - Counter **per kode_klasifikasi per tahun** (reset 1 Januari), via upsert (skala kecil; risiko race ≈ 0).
 2. **Generate `kode_verifikasi`** — 8 karakter acak (A3F9K2LP), tidak bisa ditebak.
-3. **Sisipkan TTE Kades** — baca dari bucket PRIVATE `surat-ttd` (server only).
-4. **Render PDF via Puppeteer** — data dari `data_isian_snapshot`.
-5. **Simpan** `pdf_final_url` + `status = 'disetujui'` + `admin_verifikator_id` + `disetujui_at = now()` (dipakai untuk retensi 3 hari).
+3. **Sisipkan TTE Kades** — baca dari bucket PRIVATE `surat-ttd` via service client → base64.
+4. **Render PDF via `@react-pdf/renderer`** (`renderToBuffer`) — data dari `data_isian_snapshot`, font Liberation Serif.
+5. **Upload PDF** ke bucket PRIVATE `surat-pdf`.
+6. **Simpan** `pdf_final_url` + `status = 'disetujui'` + `admin_verifikator_id` + `disetujui_at = now()` (dipakai untuk retensi 3 hari).
 
-**Case B3a (PDF gagal / timeout 15s / OOM):** rollback → status kembali `menunggu`, nomor & kode yang sudah dibuat **dibuang** (tidak dipakai ulang). Admin dapat pesan error.
+**Case B3a (render/upload gagal):** `processing_at` dibersihkan → status kembali `menunggu`, nomor & kode yang sudah dibuat **dibuang** (tidak dipakai ulang). Admin dapat pesan error, bisa retry.
 **Case B3b (double click):** tombol disabled selama loading → aman.
 
 ### 4.4. Konfigurasi Kepala Desa
@@ -270,10 +269,10 @@ Urutan **satu unit kerja**; jika gagal di tengah → rollback penuh:
 - [ ] Tab "Riwayat Surat" aktif di `/profil` (slot sudah di-reserve)
 - [ ] Route middleware: `/layanan-surat/*` → `warga`, `/admin/surat/*` → `admin_desa`, `/verifikasi/*` publik
 - [ ] Tabel baru + RLS + soft delete
-- [ ] Puppeteer setup di VPS (system Chromium, concurrency 1 + antrian, timeout 15s, reuse browser)
+- [ ] react-pdf setup (`@react-pdf/renderer` + `serverExternalPackages` + font di `public/fonts`)
 - [ ] Snapshot pattern di semua generate dokumen
 - [ ] TTE di bucket private; PDF di bucket private; signed URL untuk download
-- [ ] Kolom `disetujui_at` + cleanup job retensi PDF 3 hari (pg_cron/script VPS)
+- [ ] Kolom `disetujui_at` + cleanup job retensi PDF 3 hari (pg_cron / Vercel Cron)
 
 ---
 
@@ -304,5 +303,6 @@ Belum ada gambar TTE resmi → pakai tanda tangan pengembang sebagai placeholder
 
 | Tempat | Var |
 |---|---|
-| **Vercel** | `WORKER_URL` (http://VPS_IP:8080), `WORKER_SECRET` |
-| **VPS worker** (`worker/.env`) | `WORKER_SECRET` (sama), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_CONNECTION_STRING`, `CHROMIUM_EXECUTABLE_PATH` |
+| **Vercel** | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL` |
+| **Supabase Dashboard** | Redirect URLs harus include domain Vercel (dan `http://localhost:3000/**` untuk dev) |
+| **Google Cloud OAuth** | Authorized redirect URI = `https://<project>.supabase.co/auth/v1/callback` (tidak berubah) |

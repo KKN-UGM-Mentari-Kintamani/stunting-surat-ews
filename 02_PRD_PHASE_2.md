@@ -141,24 +141,22 @@ Phase 2 expands the functionality of the Village Portal by introducing an integr
 
 ## 5. Technical Architecture & Database
 
-### 5.1. Tech Stack (PDF Rendering) — **[REVISION: final decision]**
+### 5.1. Tech Stack (PDF Rendering) — **[REVISION 2.0: final decision = react-pdf, no VPS]**
 
 - Letter _Templates_ are hardcoded as React components (_Client Component_) for the _preview_ feature.
     
-- **Final output: Puppeteer** (locked as a final decision, because the deployment target is a VPS, not serverless — `@react-pdf/renderer` is no longer considered as an alternative for this MVP).
+- **Final output: `@react-pdf/renderer`** (replaces the earlier Puppeteer-on-VPS decision). The approved letter is rendered **in-process inside the Vercel server action** (`renderToBuffer`) — no separate worker, no VPS, no headless browser.
     
-- **Technical implications of Puppeteer on VPS that infrastructure teams need to prepare:**
+- **Rationale for switching (rev 2.0):** the letter layout is simple (kop surat, identity table, paragraphs, TTE image, number + verification code), render takes ~100–200ms, and removing Puppeteer eliminates the entire VPS/Chromium/worker complexity. `@react-pdf/renderer` bundles fontkit WASM; ensure `serverExternalPackages` includes it in `next.config.ts` and render on the Node runtime (not Edge).
     
-    - Install system dependencies for headless Chromium (`libnss3`, `libatk-bridge2.0-0`, font pack, etc. — not just `npm install puppeteer`).
-        
-    - Run the PDF rendering process as a **separate job from the main request-response cycle** (simple queue, for example via worker process or at least an `async` job with status polling), so that a slow/failed Puppeteer process does not block other HTTP requests on a resource-limited VPS.
-        
-    - Limit Puppeteer instance **concurrency** (e.g., maximum 2 instances running simultaneously) to prevent VPS from running out of memory when many admins approve letters simultaneously.
-        
-    - Set an **explicit timeout** (e.g., 15 seconds) per render process; if it times out, treat as an error and rollback (see §4.4 Error State).
-        
-    - Reuse browser instance (not a new `launch()` on every request) to reduce Chromium startup overhead.
-        
+- **Font:** official letter body uses **Liberation Serif** (metric-compatible clone of Times New Roman, GPL+font-exception) — satisfies Design §9 (official print serif) without bundling proprietary TNR. Fonts stored in `public/fonts/` so they're available in the serverless bundle.
+    
+- **TTE image:** fetched from the PRIVATE `surat-ttd` bucket via service client → embedded as base64 in the PDF. Never exposed on a public URL.
+    
+- **Transactional integrity (unchanged from PRD):** nomor + kode + PDF render + upload + `status=disetujui` are one unit. On failure the letter stays `menunggu` and `processing_at` is cleared so the admin can retry; the nomor is not consumed.
+    
+- **Counter race:** at this scale (1–2 approvals/day) the nomor counter is incremented via upsert (not `SELECT ... FOR UPDATE`); risk of duplicate ≈ 0. If volume grows, reintroduce a DB lock.
+    
 
 ### 5.2. Database Schema (Update from Phase 1) — **[REVISION]**
 
@@ -245,3 +243,4 @@ Phase 2 expands the functionality of the Village Portal by introducing an integr
 |**Version**|**Changes**|
 |Final Draft|Initial version.|
 |3.0|Added `revisi` + `catatan_admin` status (§4.1, §4.2, §5.2); locked numbering format per classification per year + lock per classification (§5.3, §6); added `kode_verifikasi` & public page `/verifikasi/[kode]` (§4.3, §5.2, §5.3); finalized Puppeteer as PDF tech with VPS implication notes (§5.1); added transactional integrity for approval process (§6); added explicit RLS for `warga_profil` and `permohonan_surat` (§6); admin path moved to `/admin/surat` following RBAC matrix in master doc; added soft delete to `warga_profil` (§5.2).|
+|3.1|**PDF tech revised: Puppeteer-on-VPS → `@react-pdf/renderer` on Vercel (in-process).** Removes the VPS/worker requirement entirely. Approved letter rendered via `renderToBuffer` in the server action, uploaded to the private `surat-pdf` bucket, then marked `disetujui`. Font = Liberation Serif (Times New Roman metric-compatible, Design §9). VPS-related notes (§5.1) replaced with react-pdf notes (`serverExternalPackages`, Node runtime, public/fonts bundle).|
