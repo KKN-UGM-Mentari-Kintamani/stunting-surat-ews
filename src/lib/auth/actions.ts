@@ -11,6 +11,20 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site-url";
+
+/**
+ * Resolves the app's base URL for the OAuth redirectTo. Prefers the request's
+ * Origin header (works on localhost), falls back to NEXT_PUBLIC_SITE_URL, then
+ * to Vercel production URL. This keeps localhost login returning to localhost
+ * as long as Supabase's Redirect URLs include it.
+ */
+async function oauthBaseUrl(): Promise<string> {
+  const headerStore = await headers();
+  const origin = headerStore.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+  return siteUrl();
+}
 
 /**
  * Starts the Google OAuth flow. `next` is an internal path the user should
@@ -19,7 +33,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function signInWithGoogleAction(next?: string) {
   const supabase = await createClient();
-  const origin = (await headers()).get("origin") ?? "";
+  const baseUrl = await oauthBaseUrl();
   const safeNext = next && next.startsWith("/") && !next.startsWith("//")
     ? next
     : "/";
@@ -27,7 +41,7 @@ export async function signInWithGoogleAction(next?: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`,
+      redirectTo: `${baseUrl}/auth/callback?next=${encodeURIComponent(safeNext)}`,
     },
   });
 

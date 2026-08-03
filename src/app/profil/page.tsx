@@ -15,9 +15,6 @@ import { ProfileSummary } from "@/app/profil/_components/profile-summary";
 import { ProfileTabs } from "@/app/profil/_components/profile-tabs";
 import { ProfilSkeleton } from "@/app/profil/_components/profil-skeleton";
 import { getProfileData } from "@/app/profil/_queries";
-import { getMyLettersAction } from "@/app/layanan-surat/_actions";
-import { LetterHistory } from "@/app/layanan-surat/_components/letter-history";
-import type { MyLetterRow } from "@/app/layanan-surat/_actions";
 
 export const metadata = {
   title: "Profil Saya",
@@ -50,10 +47,6 @@ async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
   const data = await getProfileData();
   const consented = data.user.consent_given_at !== null;
 
-  // Letter history for the Phase 2 tab.
-  const lettersRes = await getMyLettersAction();
-  const letters = (lettersRes.ok ? lettersRes.data : []) as MyLetterRow[];
-
   return (
     <>
       <ProfileSummary
@@ -65,9 +58,7 @@ async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
       {!consented && <ConsentGate />}
 
       {consented && (
-        <ProfileTabs
-          letterTab={<LetterHistory rows={letters} />}
-        >
+        <ProfileTabs>
           <>
             <AutoOpenAddChild autoOpen={autoAddNew} />
             <ChildrenSection items={data.children} />

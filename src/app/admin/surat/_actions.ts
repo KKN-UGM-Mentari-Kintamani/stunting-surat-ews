@@ -8,7 +8,6 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getWorkerConfig } from "@/lib/surat/config";
 import { formatNomorSurat, generateKodeVerifikasi } from "@/lib/surat/nomor";
 import type { IsianSnapshot } from "@/lib/surat/types";
 
@@ -95,81 +94,72 @@ export async function approveAction(permohonanId: string): Promise<ActionResult>
     return { ok: false, error: "Permohonan tidak bisa disetujui (bukan status menunggu)." };
   }
 
-  // DEV MODE: if WORKER_URL is unset or 'dev', approve inline without a PDF
-  // worker so the full frontend flow can be tested locally (nomor + kode +
-  // status=disetujui, but no pdf_final_url). Production must set WORKER_URL.
-  const workerUrl = process.env.WORKER_URL;
-  if (!workerUrl || workerUrl === "dev") {
-    return approveInline(permohonanId, supabase);
-  }
-
-  // Fire the worker.
-  try {
-    const cfg = getWorkerConfig();
-    const res = await fetch(`${cfg.url}/render`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.secret}`,
-      },
-      body: JSON.stringify({ permohonanId }),
-      // Vercel server action: allow up to ~60s for the worker (default ok).
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      console.error("[admin/surat] worker render failed:", res.status, body);
-      // Clear processing marker so the admin can retry.
-      await supabase
-        .from("permohonan_surat")
-        .update({ processing_at: null })
-        .eq("id", permohonanId);
-      return { ok: false, error: "Gagal memicu render PDF. Coba lagi." };
-    }
-  } catch (err) {
-    console.error("[admin/surat] worker call error:", err);
+  // Render the final PDF via react-pdf (in-process, serverless-friendly) and
+  // upload it, then mark disetujui. Any failure clears processing_at so the
+  // admin can retry (PRD §4.4 transactional integrity — nomor not consumed).
+  const result = await renderAndApprove(permohonanId, supabase);
+  if (!result.ok) {
     await supabase
       .from("permohonan_surat")
       .update({ processing_at: null })
       .eq("id", permohonanId);
-    return { ok: false, error: "Worker tidak merespons. Coba lagi." };
   }
-
   revalidatePath("/admin/surat");
-  return { ok: true };
+  return result;
 }
 
 /**
- * DEV-only inline approval (no Puppeteer / PDF). Generates the letter number
- * (per kode_klasifikasi + tahun) & verification code, marks the letter as
- * disetujui. pdf_final_url stays NULL so the UI shows "hubungi kantor desa"
- * — matching the real 3-day retention behaviour. Not for production.
+ * Renders the approved letter to PDF (react-pdf), uploads to the private
+ * `surat-pdf` bucket, generates nomor + kode verifikasi, and marks the letter
+ * as disetujui. Runs entirely on Vercel — no VPS / Puppeteer worker.
  */
-async function approveInline(
+async function renderAndApprove(
   permohonanId: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<ActionResult> {
   try {
-    const { data: perm } = await supabase
+    // 1. Load permohonan + jenis surat + snapshot.
+    const { data: perm, error: permErr } = await supabase
       .from("permohonan_surat")
-      .select("jenis_surat:master_jenis_surat(kode_klasifikasi)")
+      .select("data_isian_snapshot, jenis_surat:master_jenis_surat(kode_klasifikasi, nama_surat)")
       .eq("id", permohonanId)
+      .is("deleted_at", null)
       .maybeSingle();
-    const kodeKlasifikasi = (
-      (perm?.jenis_surat as unknown as { kode_klasifikasi: string }[] | { kode_klasifikasi: string } | null) ??
-      null
-    ) as { kode_klasifikasi: string } | { kode_klasifikasi: string }[] | null;
+    if (permErr || !perm) return { ok: false, error: "Permohonan tidak ditemukan." };
 
-    const kode = Array.isArray(kodeKlasifikasi)
-      ? kodeKlasifikasi[0]?.kode_klasifikasi
-      : kodeKlasifikasi?.kode_klasifikasi;
-    if (!kode) {
-      return { ok: false, error: "Jenis surat tidak ditemukan." };
+    const jenis = (perm.jenis_surat as unknown as
+      | { kode_klasifikasi: string; nama_surat: string }[]
+      | { kode_klasifikasi: string; nama_surat: string }
+      | null) as { kode_klasifikasi: string; nama_surat: string } | { kode_klasifikasi: string; nama_surat: string }[] | null;
+    const jenisObj = Array.isArray(jenis) ? jenis[0] : jenis;
+    const kode = jenisObj?.kode_klasifikasi;
+    const namaSurat = jenisObj?.nama_surat ?? "Surat Keterangan";
+    if (!kode) return { ok: false, error: "Jenis surat tidak ditemukan." };
+
+    // 2. Kades config (nama, NIP, jabatan, TTE path).
+    const { data: config } = await supabase
+      .from("surat_kades_config")
+      .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
+      .eq("id", 1)
+      .maybeSingle();
+
+    // 3. TTE image from private bucket → base64 data-URI.
+    let tteBase64: string | null = null;
+    if (config?.ttd_cap_url) {
+      const service = createServiceClient();
+      const { data: tteBlob, error: tteErr } = await service.storage
+        .from("surat-ttd")
+        .download(config.ttd_cap_url);
+      if (!tteErr && tteBlob) {
+        const buf = Buffer.from(await tteBlob.arrayBuffer());
+        tteBase64 = `data:image/png;base64,${buf.toString("base64")}`;
+      } else {
+        console.error("[admin/surat] TTE download failed:", tteErr?.message);
+      }
     }
 
+    // 4. Generate nomor + kode (counter upsert; race risk ≈ 0 at this scale).
     const tahun = new Date().getFullYear();
-
-    // Read current counter for this kode+tahun, then increment.
     const { data: counter } = await supabase
       .from("nomor_surat_counter")
       .select("nomor_urut")
@@ -180,30 +170,58 @@ async function approveInline(
     const nomorSurat = formatNomorSurat(kode, nextUrut);
     const kodeVerifikasi = generateKodeVerifikasi();
 
+    // 5. Render PDF (react-pdf).
+    const { renderSuratPdf } = await import("@/lib/surat/pdf/surat-document");
+    const pdfBuffer = await renderSuratPdf({
+      namaSurat,
+      snapshot: perm.data_isian_snapshot as never,
+      nomorSurat,
+      kodeVerifikasi,
+      namaKades: config?.nama_kades ?? "Kepala Desa",
+      nipKades: config?.nip_kades,
+      jabatanKades: config?.jabatan,
+      tteBase64,
+    });
+
+    // 6. Upload to private bucket.
+    const pdfPath = `${tahun}/${kode}/${nomorSurat.replace(/\//g, "-")}.pdf`;
+    const service = createServiceClient();
+    const { error: upErr } = await service.storage
+      .from("surat-pdf")
+      .upload(pdfPath, pdfBuffer, {
+        upsert: false,
+        contentType: "application/pdf",
+      });
+    if (upErr) {
+      console.error("[admin/surat] PDF upload failed:", upErr.message);
+      return { ok: false, error: "Gagal mengunggah PDF. Coba lagi." };
+    }
+
+    // 7. Update counter + mark disetujui (atomically as best-effort).
     await supabase.from("nomor_surat_counter").upsert(
       { kode_klasifikasi: kode, tahun, nomor_urut: nextUrut },
       { onConflict: "kode_klasifikasi,tahun" },
     );
-
     const { error: updErr } = await supabase
       .from("permohonan_surat")
       .update({
         status: "disetujui",
         nomor_surat_final: nomorSurat,
         kode_verifikasi: kodeVerifikasi,
+        pdf_final_url: pdfPath,
         disetujui_at: new Date().toISOString(),
         processing_at: null,
       })
       .eq("id", permohonanId);
     if (updErr) {
+      console.error("[admin/surat] final update failed:", updErr.message);
       return { ok: false, error: `Gagal menyetujui: ${updErr.message}` };
     }
   } catch (err) {
-    console.error("[admin/surat] approveInline failed:", err);
-    return { ok: false, error: "Gagal menyetujui (dev). Coba lagi." };
+    console.error("[admin/surat] renderAndApprove failed:", err);
+    return { ok: false, error: "Gagal menerbitkan surat. Coba lagi." };
   }
 
-  revalidatePath("/admin/surat");
   return { ok: true };
 }
 

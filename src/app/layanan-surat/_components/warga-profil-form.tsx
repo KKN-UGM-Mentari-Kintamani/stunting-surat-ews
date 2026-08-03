@@ -54,10 +54,9 @@ interface Props {
 
 export function WargaProfilForm({ onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
-  const [agama, setAgama] = useState("");
   const [isPending, start] = useTransition();
 
-  const { register, handleSubmit, formState: { errors, isValid } } = useForm<ProfilForm>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<ProfilForm>({
     resolver: zodResolver(profilSchema),
     mode: "onChange",
     defaultValues: {
@@ -66,15 +65,17 @@ export function WargaProfilForm({ onSaved }: Props) {
     },
   });
 
+  const agama = watch("agama");
+
   function onSubmit(values: ProfilForm) {
     setError(null);
     start(async () => {
-      const res = await saveWargaProfilAction({ ...values, agama: agama || values.agama });
+      const res = await saveWargaProfilAction(values);
       if (!res.ok) {
         setError(res.error);
         return;
       }
-      onSaved({ ...values, agama: agama || values.agama });
+      onSaved(values);
     });
   }
 
@@ -138,7 +139,7 @@ export function WargaProfilForm({ onSaved }: Props) {
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="agama" className={labelClass}>Agama <span className="text-destructive">*</span></FieldLabel>
-                <Select value={agama} onValueChange={setAgama}>
+                <Select value={agama} onValueChange={(v) => setValue("agama", v, { shouldValidate: true })}>
                   <SelectTrigger id="agama" aria-invalid={!agama} className="w-full">
                     <SelectValue placeholder="Pilih agama" />
                   </SelectTrigger>

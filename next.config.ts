@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // react-pdf bundles fontkit (WASM) — keep it external so it's not bundled
+  // into the client. Server-only rendering (Phase 2 letters).
+  serverExternalPackages: ["@react-pdf/renderer"],
 };
 
 export default nextConfig;
