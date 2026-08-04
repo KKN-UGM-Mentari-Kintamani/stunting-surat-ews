@@ -63,10 +63,7 @@ async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
       {consented && (
         <>
           {data.wargaProfil ? (
-            <WargaProfileCard
-              profil={data.wargaProfil}
-              onSaved={() => { /* page revalidates after save */ }}
-            />
+            <WargaProfileCard profil={data.wargaProfil} />
           ) : (
             <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 p-4">
               <p className="text-[15px] text-muted-foreground">

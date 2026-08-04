@@ -29,10 +29,9 @@ import {
 
 interface Props {
   profil: WargaProfilData;
-  onSaved: (profil: WargaProfilData) => void;
 }
 
-export function WargaProfileCard({ profil, onSaved }: Props) {
+export function WargaProfileCard({ profil }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -75,9 +74,8 @@ export function WargaProfileCard({ profil, onSaved }: Props) {
           </DialogHeader>
           <WargaProfilForm
             initial={profil}
-            onSaved={(updated) => {
+            onSaved={() => {
               setOpen(false);
-              onSaved(updated);
               toast.success("Data warga berhasil diperbarui.");
             }}
           />
