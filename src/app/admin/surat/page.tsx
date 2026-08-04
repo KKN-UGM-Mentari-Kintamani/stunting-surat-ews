@@ -5,6 +5,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { ApprovalQueue } from "@/app/admin/surat/_components/approval-queue";
+import { QueueStats } from "@/app/admin/surat/_components/queue-stats";
 
 export const metadata = { title: "Antrian Persetujuan Surat" };
 
@@ -69,5 +70,21 @@ export default async function AdminSuratPage() {
     };
   });
 
-  return <ApprovalQueue items={items as unknown as QueueItem[]} />;
+  // Monitoring stats.
+  const total = items.length;
+  const waiting = items.filter((i) => i.status === "menunggu").length;
+  const todayKey = new Date().toDateString();
+  const approvedToday = items.filter(
+    (i) =>
+      i.status === "disetujui" &&
+      i.disetujui_at &&
+      new Date(i.disetujui_at).toDateString() === todayKey,
+  ).length;
+
+  return (
+    <div className="flex flex-col gap-6 py-10 md:py-14">
+      <QueueStats total={total} approvedToday={approvedToday} waiting={waiting} />
+      <ApprovalQueue items={items as unknown as QueueItem[]} />
+    </div>
+  );
 }

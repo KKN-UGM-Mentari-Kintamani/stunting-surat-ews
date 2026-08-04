@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const agamaOptions = [
@@ -113,13 +114,13 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
           <FieldGroup>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field data-invalid={!!errors.nik}>
-                <FieldLabel htmlFor="nik" className={labelClass}>NIK <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="nik" className={labelClass}>NIK <RequiredMark /></FieldLabel>
                 <Input id="nik" placeholder="16 digit" maxLength={16} inputMode="numeric"
                   aria-invalid={!!errors.nik} {...register("nik")} />
                 {errors.nik && <FieldError errors={[errors.nik]} />}
               </Field>
               <Field data-invalid={!!errors.no_kk}>
-                <FieldLabel htmlFor="no_kk" className={labelClass}>No. Kartu Keluarga <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="no_kk" className={labelClass}>No. Kartu Keluarga <RequiredMark /></FieldLabel>
                 <Input id="no_kk" placeholder="16 digit" maxLength={16} inputMode="numeric"
                   aria-invalid={!!errors.no_kk} {...register("no_kk")} />
                 {errors.no_kk && <FieldError errors={[errors.no_kk]} />}
@@ -127,7 +128,7 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
             </div>
 
             <Field data-invalid={!!errors.nama}>
-              <FieldLabel htmlFor="nama" className={labelClass}>Nama Lengkap <span className="text-destructive">*</span></FieldLabel>
+              <FieldLabel htmlFor="nama" className={labelClass}>Nama Lengkap <RequiredMark /></FieldLabel>
               <Input id="nama" placeholder="Sesuai KTP"
                 aria-invalid={!!errors.nama} {...register("nama")} />
               {errors.nama && <FieldError errors={[errors.nama]} />}
@@ -138,13 +139,13 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field data-invalid={!!errors.tempat_lahir}>
-                <FieldLabel htmlFor="tempat_lahir" className={labelClass}>Tempat Lahir <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="tempat_lahir" className={labelClass}>Tempat Lahir <RequiredMark /></FieldLabel>
                 <Input id="tempat_lahir" placeholder="Contoh: Denpasar"
                   aria-invalid={!!errors.tempat_lahir} {...register("tempat_lahir")} />
                 {errors.tempat_lahir && <FieldError errors={[errors.tempat_lahir]} />}
               </Field>
               <Field data-invalid={!!errors.tanggal_lahir}>
-                <FieldLabel htmlFor="tanggal_lahir" className={labelClass}>Tanggal Lahir <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="tanggal_lahir" className={labelClass}>Tanggal Lahir <RequiredMark /></FieldLabel>
                 <Input id="tanggal_lahir" type="date"
                   max={new Date().toISOString().slice(0, 10)}
                   aria-invalid={!!errors.tanggal_lahir} {...register("tanggal_lahir")} />
@@ -154,7 +155,7 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field>
-                <FieldLabel htmlFor="agama" className={labelClass}>Agama <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="agama" className={labelClass}>Agama <RequiredMark /></FieldLabel>
                 <Select value={agama} onValueChange={(v) => setValue("agama", v, { shouldValidate: true })}>
                   <SelectTrigger id="agama" aria-invalid={!agama} className="w-full">
                     <SelectValue placeholder="Pilih agama" />
@@ -169,7 +170,7 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
                 </Select>
               </Field>
               <Field data-invalid={!!errors.pekerjaan}>
-                <FieldLabel htmlFor="pekerjaan" className={labelClass}>Pekerjaan <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="pekerjaan" className={labelClass}>Pekerjaan <RequiredMark /></FieldLabel>
                 <Input id="pekerjaan" placeholder="Contoh: Petani"
                   aria-invalid={!!errors.pekerjaan} {...register("pekerjaan")} />
                 {errors.pekerjaan && <FieldError errors={[errors.pekerjaan]} />}
@@ -177,7 +178,7 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
             </div>
 
             <Field data-invalid={!!errors.alamat}>
-              <FieldLabel htmlFor="alamat" className={labelClass}>Alamat Lengkap <span className="text-destructive">*</span></FieldLabel>
+              <FieldLabel htmlFor="alamat" className={labelClass}>Alamat Lengkap <RequiredMark /></FieldLabel>
               <Input id="alamat" placeholder="Jl., RT/RW, Dusun, Desa, Kecamatan"
                 aria-invalid={!!errors.alamat} {...register("alamat")} />
               {errors.alamat && <FieldError errors={[errors.alamat]} />}

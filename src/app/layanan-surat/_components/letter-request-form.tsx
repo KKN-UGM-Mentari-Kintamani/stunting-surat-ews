@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 
 interface JenisSurat {
@@ -136,7 +137,7 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
           >
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="jenis" className={labelClass}>Jenis Surat <span className="text-destructive">*</span></FieldLabel>
+                <FieldLabel htmlFor="jenis" className={labelClass}>Jenis Surat <RequiredMark /></FieldLabel>
                 <Select value={jenisId} onValueChange={setJenisId}>
                   <SelectTrigger id="jenis" aria-invalid={!jenisId} className="w-full">
                     <SelectValue placeholder="Pilih jenis surat" />
@@ -153,7 +154,7 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="f-nama" className={labelClass}>Nama Pemohon <span className="text-destructive">*</span></FieldLabel>
+                  <FieldLabel htmlFor="f-nama" className={labelClass}>Nama Pemohon <RequiredMark /></FieldLabel>
                   <Input id="f-nama" value={nama} onChange={(e) => setNama(e.target.value)}
                     placeholder="Sesuai KTP / atas nama" />
                   <FieldDescription className="text-[13px] text-muted-foreground">
@@ -161,7 +162,7 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
                   </FieldDescription>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="f-nik" className={labelClass}>NIK <span className="text-destructive">*</span></FieldLabel>
+                  <FieldLabel htmlFor="f-nik" className={labelClass}>NIK <RequiredMark /></FieldLabel>
                   <Input id="f-nik" value={nik} onChange={(e) => setNik(e.target.value)}
                     maxLength={16} inputMode="numeric" placeholder="16 digit" />
                 </Field>
@@ -170,12 +171,12 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
               {isSKU && (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <Field>
-                    <FieldLabel htmlFor="f-usaha" className={labelClass}>Nama Usaha <span className="text-destructive">*</span></FieldLabel>
+                    <FieldLabel htmlFor="f-usaha" className={labelClass}>Nama Usaha <RequiredMark /></FieldLabel>
                     <Input id="f-usaha" value={namaUsaha} onChange={(e) => setNamaUsaha(e.target.value)}
                       placeholder="Contoh: Warung Bu Sari" />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="f-jenis" className={labelClass}>Jenis Usaha <span className="text-destructive">*</span></FieldLabel>
+                    <FieldLabel htmlFor="f-jenis" className={labelClass}>Jenis Usaha <RequiredMark /></FieldLabel>
                     <Input id="f-jenis" value={jenisUsaha} onChange={(e) => setJenisUsaha(e.target.value)}
                       placeholder="Contoh: Dagangan" />
                   </Field>
@@ -188,7 +189,7 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
                   Data ini digunakan perangkat desa untuk menilai permohonan Anda.
                 </p>
                 <Field>
-                  <FieldLabel htmlFor="f-tujuan" className={labelClass}>Tujuan Permohonan Surat <span className="text-destructive">*</span></FieldLabel>
+                  <FieldLabel htmlFor="f-tujuan" className={labelClass}>Tujuan Permohonan Surat <RequiredMark /></FieldLabel>
                   <Input id="f-tujuan" value={tujuan} onChange={(e) => setTujuan(e.target.value)}
                     placeholder="Contoh: Untuk pengajuan bantuan sosial" />
                 </Field>
@@ -211,7 +212,7 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
                   />
                   <div className="flex flex-col gap-1">
                     <FieldLabel htmlFor="f-pernyataan" className={labelClass}>
-                      Saya menyatakan data yang diisi adalah benar &amp; bertanggung jawab penuh <span className="text-destructive">*</span>
+                      Saya menyatakan data yang diisi adalah benar &amp; bertanggung jawab penuh <RequiredMark />
                     </FieldLabel>
                     <FieldDescription className="text-[13px] text-muted-foreground">
                       Pemberian keterangan tidak benar dapat dikenakan sanksi sesuai peraturan yang berlaku.
@@ -227,7 +228,20 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
               </Alert>
             )}
 
-            <Button type="submit" disabled={!jenisId} className="gap-2">
+            {/* Required logic mirrors handlePreview: jenis, nama, NIK, tujuan,
+                pernyataan; plus SKU fields when the letter type is SKU. */}
+            <Button
+              type="submit"
+              disabled={
+                !jenisId ||
+                !nama.trim() ||
+                nik.length !== 16 ||
+                !tujuan.trim() ||
+                !pernyataan ||
+                (isSKU && (!namaUsaha.trim() || !jenisUsaha.trim()))
+              }
+              className="gap-2"
+            >
               Lihat Pratinjau
               <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden />
             </Button>

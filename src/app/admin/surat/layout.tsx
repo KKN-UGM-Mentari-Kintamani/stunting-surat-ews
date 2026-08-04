@@ -9,18 +9,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, Plus, Settings, FileText } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "@/lib/auth/actions";
+import { AdminSuratNav } from "@/app/admin/surat/_components/admin-surat-nav";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-const MENU = [
-  { href: "/admin/surat", label: "Antrian", icon: FileText },
-  { href: "/admin/surat/walkin", label: "Walk-In", icon: Plus },
-  { href: "/admin/surat/config", label: "Konfigurasi", icon: Settings },
-];
 
 export default async function AdminSuratLayout({
   children,
@@ -48,18 +42,7 @@ export default async function AdminSuratLayout({
           <span className="font-display text-base font-semibold">Dasbor Surat</span>
         </Link>
 
-        <nav className="flex flex-1 flex-col gap-1 px-3" aria-label="Menu admin surat">
-          {MENU.map((m) => (
-            <Link
-              key={m.href}
-              href={m.href}
-              className="flex items-center gap-2 rounded-md px-3 py-2.5 text-[15px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <m.icon className="size-5" strokeWidth={1.5} aria-hidden />
-              {m.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminSuratNav variant="sidebar" />
 
         {/* Account menu pinned at the bottom */}
         <div className="border-t border-border px-4 py-4">
@@ -88,20 +71,7 @@ export default async function AdminSuratLayout({
               </Button>
             </form>
           </div>
-          <nav aria-label="Menu admin surat" className="flex items-center gap-1 overflow-x-auto px-2 pb-2">
-            {MENU.map((m) => (
-              <Link
-                key={m.href}
-                href={m.href}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-[14px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <m.icon className="size-4" strokeWidth={1.5} aria-hidden />
-                {m.label}
-              </Link>
-            ))}
-          </nav>
+          <AdminSuratNav variant="topbar" />
         </header>
 
         <main className="flex-1 px-5 pb-16 md:px-8 md:pb-10">

@@ -20,6 +20,7 @@ import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -143,7 +144,7 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
           <form onSubmit={goToPreview} noValidate className="flex flex-col gap-5">
             <FieldGroup>
               <Field>
-                <FieldLabel className={labelClass}>Jenis Surat *</FieldLabel>
+                <FieldLabel className={labelClass}>Jenis Surat <RequiredMark /></FieldLabel>
                 <Select value={jenisId} onValueChange={setJenisId}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Pilih jenis surat" /></SelectTrigger>
                   <SelectContent><SelectGroup>
@@ -152,9 +153,9 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
                 </Select>
               </Field>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field><FieldLabel className={labelClass}>Nama Lengkap *</FieldLabel>
+                <Field><FieldLabel className={labelClass}>Nama Lengkap <RequiredMark /></FieldLabel>
                   <Input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Sesuai KTP" /></Field>
-                <Field><FieldLabel className={labelClass}>NIK *</FieldLabel>
+                <Field><FieldLabel className={labelClass}>NIK <RequiredMark /></FieldLabel>
                   <Input value={nik} onChange={(e) => setNik(e.target.value)} maxLength={16} inputMode="numeric" placeholder="16 digit" /></Field>
               </div>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -195,7 +196,7 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
                 <p className="mb-3 text-[13px] font-medium text-muted-foreground">
                   Data ini digunakan perangkat desa untuk menilai permohonan.
                 </p>
-                <Field><FieldLabel className={labelClass}>Tujuan Permohonan Surat *</FieldLabel>
+                <Field><FieldLabel className={labelClass}>Tujuan Permohonan Surat <RequiredMark /></FieldLabel>
                   <Input value={tujuan} onChange={(e) => setTujuan(e.target.value)}
                     placeholder="Contoh: Untuk pengajuan bantuan sosial" /></Field>
                 <Field><FieldLabel className={labelClass}>Nomor Telepon</FieldLabel>
@@ -204,7 +205,12 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
               </div>
             </FieldGroup>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            <Button type="submit" className="gap-1.5 w-fit">
+            {/* Required logic mirrors goToPreview: jenis, nama, NIK, tujuan. */}
+            <Button
+              type="submit"
+              disabled={!jenisId || !nama.trim() || nik.length !== 16 || !tujuan.trim()}
+              className="gap-1.5 w-fit"
+            >
               Lihat Pratinjau
               <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden />
             </Button>

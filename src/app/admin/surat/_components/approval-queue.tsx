@@ -99,14 +99,13 @@ export function ApprovalQueue({ items: initialItems }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 py-10 md:py-14">
+    <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-[28px] leading-[1.15] font-semibold md:text-[36px]">
+        <h1 className="font-display text-[28px] leading-[1.15] font-semibold md:text-[32px]">
           Antrian Persetujuan
         </h1>
         <p className="mt-2 text-[15px] text-muted-foreground">
-          Semua permohonan surat. Klik ikon detail untuk meninjau &amp; mengambil
-          tindakan.
+          Tinjau &amp; ambil tindakan pada permohonan surat.
         </p>
       </div>
 
