@@ -1,147 +1,113 @@
 "use client";
 
 /* src/app/admin/surat/_components/approval-queue.tsx
- * Antrian persetujuan (PRD §4.2): 3 aksi per permohonan — Setujui (trigger
- * worker + polling), Minta Revisi (catatan wajib), Tolak (catatan wajib).
+ * Redesigned as a professional CRUD table. Columns: No · Nama · Tanggal ·
+ * Jenis Surat · Status · Tindakan.
+ *   - Tindakan PDF (FileText) opens the final PDF in a new tab (only when
+ *     approved).
+ *   - Tindakan Detail (Eye) opens the 50:50 panel (preview / detail + aksi).
+ * Items stay in the table after an action; status updates in local state
+ * (no reload). A status filter sits above the table.
  */
-import { useState, useTransition, useCallback } from "react";
-import { Check, FileEdit, Loader2, XCircle } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Eye, FileText, Loader2 } from "lucide-react";
 
-import {
-  approveAction,
-  requestRevisionAction,
-  rejectAction,
-  getLetterStatusAction,
-} from "@/app/admin/surat/_actions";
+import { downloadLetterPdfAction } from "@/app/layanan-surat/_actions";
+import { LetterDetailPanel } from "@/app/admin/surat/_components/letter-detail-panel";
+import type { QueueItem } from "@/app/admin/surat/page";
 import { LetterStatusBadge } from "@/components/surat/letter-status-badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-interface QueueItem {
-  id: string;
-  data_isian_snapshot: Record<string, unknown>;
-  created_at: string;
-  jenis_surat: { nama_surat: string; kode_klasifikasi: string };
-}
 
 interface Props {
   items: QueueItem[];
 }
 
+const FILTERS = [
+  { value: "semua", label: "Semua Status" },
+  { value: "menunggu", label: "Menunggu" },
+  { value: "revisi", label: "Perlu Revisi" },
+  { value: "disetujui", label: "Disetujui" },
+  { value: "ditolak", label: "Ditolak" },
+];
+
 function getSnap(r: Record<string, unknown>, key: string): string {
   return (r[key] as string) ?? "—";
 }
 
-export function ApprovalQueue({ items }: Props) {
-  const [reviseOpen, setReviseOpen] = useState<string | null>(null);
-  const [rejectOpen, setRejectOpen] = useState<string | null>(null);
-  const [catatan, setCatatan] = useState("");
+function fmtTgl(v: string): string {
+  return new Date(v).toLocaleDateString("id-ID", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+}
+
+export function ApprovalQueue({ items: initialItems }: Props) {
+  const [items, setItems] = useState<QueueItem[]>(initialItems);
+  const [filter, setFilter] = useState("semua");
+  const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [processing, setProcessing] = useState<string | null>(null);
-  const [polling, setPolling] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [pdfPending, setPdfPending] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
-  const handleApprove = useCallback(async (id: string) => {
-    setError(null);
-    setProcessing(id);
-    const res = await approveAction(id);
-    if (!res.ok) {
-      setError(res.error);
-      setProcessing(null);
-      return;
-    }
-    // Poll until status changes (worker finishes or fails).
-    setPolling(true);
-    let attempts = 0;
-    const poll = async () => {
-      attempts++;
-      if (attempts > 30) { // 30 × 2s = 60s max
-        setError("Waktu tunggu habis. Cek status manual.");
-        setProcessing(null);
-        setPolling(false);
-        return;
-      }
-      const status = await getLetterStatusAction(id);
-      if (!status.ok || !status.data) {
-        setError(status.ok ? "Data tidak tersedia." : status.error);
-        setProcessing(null);
-        setPolling(false);
-        return;
-      }
-      const d = status.data;
-      if (d.status === "disetujui") {
-        setDone(id);
-        setProcessing(id);
-        setPolling(false);
-        window.location.reload();
-        return;
-      }
-      if (d.status === "menunggu" && !d.processing) {
-        // Worker failed or returned to menunggu.
-        setError("Render PDF gagal. Coba lagi.");
-        setProcessing(null);
-        setPolling(false);
-        return;
-      }
-      setTimeout(poll, 2000);
-    };
-    setTimeout(poll, 2000);
-  }, []);
+  const filtered = filter === "semua"
+    ? items
+    : items.filter((i) => i.status === filter);
 
-  function handleRevise(id: string) {
-    setError(null);
-    start(async () => {
-      const res = await requestRevisionAction(id, catatan);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setReviseOpen(null);
-      setCatatan("");
-      window.location.reload();
-    });
+  const openItem = items.find((i) => i.id === openId) ?? null;
+
+  function handleActionDone(id: string, status: string) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status } : i)),
+    );
   }
 
-  function handleReject(id: string) {
+  function handleOpenPdf(id: string, item: QueueItem) {
+    if (item.status !== "disetujui" || !item.pdf_final_url) return;
+    setPdfPending(id);
     setError(null);
     start(async () => {
-      const res = await rejectAction(id, catatan);
-      if (!res.ok) {
-        setError(res.error);
-        return;
+      try {
+        const res = await downloadLetterPdfAction(id);
+        if (!res.ok || !res.data?.url) {
+          setError(res.ok ? "PDF tidak tersedia." : res.error);
+          return;
+        }
+        window.open(res.data.url, "_blank");
+      } catch (err) {
+        console.error("[admin/surat] open pdf failed:", err);
+        setError("Gagal membuka PDF.");
+      } finally {
+        setPdfPending(null);
       }
-      setRejectOpen(null);
-      setCatatan("");
-      window.location.reload();
     });
   }
 
   return (
-    <div className="flex flex-col gap-8 py-10 md:py-14">
+    <div className="flex flex-col gap-6 py-10 md:py-14">
       <div>
         <h1 className="font-display text-[28px] leading-[1.15] font-semibold md:text-[36px]">
           Antrian Persetujuan
         </h1>
         <p className="mt-2 text-[15px] text-muted-foreground">
-          Permohonan surat yang menunggu persetujuan Anda.
+          Semua permohonan surat. Klik ikon detail untuk meninjau &amp; mengambil
+          tindakan.
         </p>
       </div>
 
@@ -151,154 +117,111 @@ export function ApprovalQueue({ items }: Props) {
         </Alert>
       )}
 
-      {items.length === 0 ? (
+      {/* Status filter */}
+      <div className="flex items-center gap-3">
+        <span className="text-[14px] text-muted-foreground">Status:</span>
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {FILTERS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {filtered.length === 0 ? (
         <Empty className="text-center">
-          <EmptyTitle>Antrian kosong</EmptyTitle>
+          <EmptyTitle>Tidak ada data</EmptyTitle>
           <EmptyDescription>
-            Tidak ada permohonan surat yang menunggu persetujuan saat ini.
+            Tidak ada permohonan surat dengan status ini.
           </EmptyDescription>
         </Empty>
       ) : (
-        <div className="flex flex-col gap-4">
-          {items.map((item) => {
-            const s = item.data_isian_snapshot;
-            const isProcessing = processing === item.id;
-            return (
-              <Card key={item.id}>
-                <CardHeader>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex flex-col gap-1">
-                      <CardTitle>{item.jenis_surat.nama_surat}</CardTitle>
-                      <p className="text-[13px] text-muted-foreground">
-                        Diajukan {new Date(item.created_at).toLocaleDateString("id-ID", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
-                      </p>
-                    </div>
-                    {isProcessing && (
-                      <div className="flex items-center gap-2 text-[14px] text-muted-foreground">
-                        <Loader2 className="animate-spin" aria-hidden />
-                        {polling ? "Menerbitkan Dokumen…" : "Memulai…"}
+        <div className="overflow-x-auto rounded-md border border-border">
+          <Table className="min-w-[760px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">No</TableHead>
+                <TableHead>Nama Pemohon</TableHead>
+                <TableHead>Tanggal</TableHead>
+                <TableHead>Jenis Surat</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Tindakan</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((item, idx) => {
+                const s = item.data_isian_snapshot;
+                const isApproved = item.status === "disetujui" && !!item.pdf_final_url;
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="tabular-data text-muted-foreground">
+                      {idx + 1}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {getSnap(s, "nama")}
+                      <span className="block text-[12px] font-normal text-muted-foreground">
+                        {item.nomor_surat_final ? `No. ${item.nomor_surat_final}` : ""}
+                      </span>
+                    </TableCell>
+                    <TableCell className="tabular-data text-[14px]">
+                      {fmtTgl(item.created_at)}
+                    </TableCell>
+                    <TableCell className="text-[14px]">
+                      {item.jenis_surat.nama_surat}
+                    </TableCell>
+                    <TableCell>
+                      <LetterStatusBadge status={item.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {/* PDF (open final PDF in new tab — only when approved) */}
+                        <Button
+                          variant={isApproved ? "default" : "ghost"}
+                          size="icon-xs"
+                          disabled={!isApproved || pdfPending === item.id}
+                          onClick={() => handleOpenPdf(item.id, item)}
+                          aria-label="Lihat PDF final"
+                        >
+                          {pdfPending === item.id ? (
+                            <Loader2 className="animate-spin" aria-hidden />
+                          ) : (
+                            <FileText className="size-3.5" strokeWidth={1.5} aria-hidden />
+                          )}
+                        </Button>
+                        {/* Detail (open 50:50 panel) */}
+                        <Button
+                          variant={item.status === "menunggu" || item.status === "revisi"
+                            ? "outline"
+                            : "ghost"}
+                          size="icon-xs"
+                          onClick={() => setOpenId(item.id)}
+                          aria-label="Detail permohonan"
+                        >
+                          <Eye className="size-3.5" strokeWidth={1.5} aria-hidden />
+                        </Button>
                       </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="flex gap-2"><dt className="text-muted-foreground">Nama:</dt><dd className="font-medium">{getSnap(s, "nama")}</dd></div>
-                    <div className="flex gap-2"><dt className="text-muted-foreground">NIK:</dt><dd className="tabular-data">{getSnap(s, "nik")}</dd></div>
-                    <div className="flex gap-2"><dt className="text-muted-foreground">Pekerjaan:</dt><dd>{getSnap(s, "pekerjaan")}</dd></div>
-                    <div className="flex gap-2"><dt className="text-muted-foreground">Agama:</dt><dd>{getSnap(s, "agama")}</dd></div>
-                    <div className="flex gap-2"><dt className="text-muted-foreground">Alamat:</dt><dd className="flex-1">{getSnap(s, "alamat")}</dd></div>
-                  </dl>
-                  {(s.data_khusus as Record<string, string> | undefined)?.nama_usaha && (
-                    <dl className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <div className="flex gap-2"><dt className="text-muted-foreground">Usaha:</dt><dd className="font-medium">{(s.data_khusus as Record<string, string>).nama_usaha}</dd></div>
-                      <div className="flex gap-2"><dt className="text-muted-foreground">Jenis:</dt><dd>{(s.data_khusus as Record<string, string>).jenis_usaha}</dd></div>
-                    </dl>
-                  )}
-
-                  {/* Administrative consideration inputs */}
-                  <div className="mt-3 rounded-sm border border-border bg-muted/40 p-3">
-                    <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Pertimbangan Admin
-                    </p>
-                    <dl className="flex flex-col gap-2">
-                      <div className="flex flex-wrap gap-2">
-                        <dt className="text-muted-foreground">Tujuan Permohonan:</dt>
-                        <dd className="font-medium">{getSnap(s, "tujuan_permohonan")}</dd>
-                      </div>
-                      {getSnap(s, "nomor_telepon") && (
-                        <div className="flex flex-wrap gap-2">
-                          <dt className="text-muted-foreground">No. Telepon:</dt>
-                          <dd className="tabular-data">{getSnap(s, "nomor_telepon")}</dd>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <dt className="text-muted-foreground">Pernyataan data benar:</dt>
-                        <dd className={s.pernyataan_benar ? "font-medium text-status-normal-fg" : "font-medium text-status-rejected-fg"}>
-                          {s.pernyataan_benar ? "✓ Sudah dinyatakan" : "✗ Belum dinyatakan"}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  {done === item.id && (
-                    <div className="mt-3 rounded-sm bg-status-normal-bg px-3 py-2 text-[14px] font-medium text-status-normal-fg">
-                      Surat berhasil diterbitkan.
-                    </div>
-                  )}
-
-                  {done !== item.id && (
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="default"
-                        className="gap-1.5"
-                        disabled={isProcessing}
-                        onClick={() => handleApprove(item.id)}
-                      >
-                        {isProcessing ? <Loader2 className="animate-spin" aria-hidden /> : <Check className="size-4" strokeWidth={1.5} aria-hidden />}
-                        Setujui
-                      </Button>
-
-                      <Dialog open={reviseOpen === item.id} onOpenChange={(v) => { setReviseOpen(v ? item.id : null); setCatatan(""); }}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="gap-1.5" disabled={isProcessing}>
-                            <FileEdit className="size-4" strokeWidth={1.5} aria-hidden />
-                            Minta Revisi
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Minta Revisi</DialogTitle>
-                            <DialogDescription>
-                              Berikan catatan untuk warga. Catatan wajib diisi.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <Input
-                            value={catatan}
-                            onChange={(e) => setCatatan(e.target.value)}
-                            placeholder="Contoh: No. KK terbalik dengan suami, tolong perbaiki."
-                          />
-                          <DialogFooter>
-                            <Button variant="ghost" onClick={() => { setReviseOpen(null); setCatatan(""); }}>Batal</Button>
-                            <Button disabled={!catatan.trim()||isPending} onClick={() => handleRevise(item.id)}>Kirim Revisi</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-
-                      <Dialog open={rejectOpen === item.id} onOpenChange={(v) => { setRejectOpen(v ? item.id : null); setCatatan(""); }}>
-                        <DialogTrigger asChild>
-                          <Button variant="destructive" className="gap-1.5" disabled={isProcessing}>
-                            <XCircle className="size-4" strokeWidth={1.5} aria-hidden />
-                            Tolak
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Tolak Permohonan</DialogTitle>
-                            <DialogDescription>
-                              Berikan alasan penolakan (final). Warga tidak bisa mengedit lagi.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <Input
-                            value={catatan}
-                            onChange={(e) => setCatatan(e.target.value)}
-                            placeholder="Contoh: Data tidak lengkap, mohon buat permohonan baru."
-                          />
-                          <DialogFooter>
-                            <Button variant="ghost" onClick={() => { setRejectOpen(null); setCatatan(""); }}>Batal</Button>
-                            <Button variant="destructive" disabled={!catatan.trim()||isPending} onClick={() => handleReject(item.id)}>Tolak</Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
+      )}
+
+      {openItem && (
+        <LetterDetailPanel
+          item={openItem}
+          open={!!openItem}
+          onOpenChange={(v) => { if (!v) setOpenId(null); }}
+          onActionDone={handleActionDone}
+        />
       )}
     </div>
   );

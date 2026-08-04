@@ -313,6 +313,25 @@ export async function rejectAction(permohonanId: string, alasan: string): Promis
   return { ok: true };
 }
 
+/**
+ * Unified action entry from the redesigned CRUD table. Dispatches to the
+ * concrete action based on the selected verdict. Catatan is required for
+ * revisi/tolak, optional for setuju.
+ */
+export async function submitAksiAction(
+  permohonanId: string,
+  aksi: "setuju" | "revisi" | "tolak",
+  catatan?: string,
+): Promise<ActionResult> {
+  if (aksi === "setuju") {
+    return approveAction(permohonanId);
+  }
+  if (aksi === "revisi") {
+    return requestRevisionAction(permohonanId, catatan ?? "");
+  }
+  return rejectAction(permohonanId, catatan ?? "");
+}
+
 // ---------- Walk-in create ----------
 
 export async function createWalkInAction(
