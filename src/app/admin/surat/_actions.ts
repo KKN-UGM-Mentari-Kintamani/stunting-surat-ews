@@ -304,10 +304,15 @@ export async function submitAksiAction(
 
 // ---------- Walk-in create ----------
 
+/**
+ * Walk-in: admin serves the citizen at the counter, so the letter is
+ * AUTO-APPROVED immediately — inserted then rendered/approved via the same
+ * pipeline as the online queue (nomor + kode + PDF + status=disetujui).
+ */
 export async function createWalkInAction(
   jenisSuratId: string,
   snapshot: IsianSnapshot,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; nomorSurat: string | null; pdfUrl: string | null }>> {
   let adminId: string;
   try {
     adminId = await assertAdmin();
@@ -330,8 +335,15 @@ export async function createWalkInAction(
     console.error("[admin/surat] createWalkIn failed:", error.message);
     return { ok: false, error: "Gagal membuat surat walk-in." };
   }
+
+  // Auto-approve (walk-in = verified at the counter).
+  const approved = await renderAndApprove(data.id, supabase);
+  if (!approved.ok) {
+    return { ok: false, error: approved.error };
+  }
+
   revalidatePath("/admin/surat");
-  return { ok: true, data: { id: data.id } };
+  return { ok: true, data: { id: data.id, nomorSurat: null, pdfUrl: null } };
 }
 
 // ---------- Kades config ----------
