@@ -72,15 +72,14 @@ ALTER TABLE public.master_jenis_surat
     CHECK (template_key IN ('sktm','sku','skd'));
 
 -- Backfill template_key on existing rows (idempotent migration).
+-- NOTE: the column is added with DEFAULT 'sktm', so existing rows are ALREADY
+-- 'sktm' — backfill MUST match on nama_surat, not template_key IS NULL.
 UPDATE public.master_jenis_surat SET template_key = 'sktm'
-  WHERE template_key IS NULL
-    AND (nama_surat ILIKE '%tidak mampu%' OR nama_surat ILIKE '%sktm%');
+  WHERE nama_surat ILIKE '%tidak mampu%' OR nama_surat ILIKE '%sktm%';
 UPDATE public.master_jenis_surat SET template_key = 'sku'
-  WHERE template_key IS NULL
-    AND (nama_surat ILIKE '%usaha%' OR nama_surat ILIKE '%sku%');
+  WHERE nama_surat ILIKE '%usaha%' OR nama_surat ILIKE '%sku%';
 UPDATE public.master_jenis_surat SET template_key = 'skd'
-  WHERE template_key IS NULL
-    AND (nama_surat ILIKE '%domisili%' OR nama_surat ILIKE '%skd%');
+  WHERE nama_surat ILIKE '%domisili%' OR nama_surat ILIKE '%skd%';
 
 -- Rename the domisili type to match the template set (SKD).
 UPDATE public.master_jenis_surat
