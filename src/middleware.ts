@@ -2,8 +2,11 @@
  * Next.js Edge Middleware — enforces the Route Permission Matrix
  * (00_MASTER_CROSS_PHASE_CONSISTENCY.md §1) in a data-driven, Phase-2-extensible way.
  *
- * Why data-driven array (PRD §6 mandate): adding Phase 2 routes is one array
- * entry, not a code change. The permission-check logic stays generic & testable.
+ * Two duties:
+ *  1. Protected routes: reject unauthenticated / wrong-role users per the matrix.
+ *  2. Public-home redirect: admins & cadres are sent straight to their own
+ *     dashboard when they try to open the citizen home / education pages
+ *     (their UI is the dashboard, not the citizen portal).
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
@@ -24,26 +27,22 @@ export const ROUTE_PERMISSIONS: RouteRule[] = [
   { pattern: '/admin/surat',    roles: ['admin_desa'],       match: 'prefix' },
 ];
 
-async function fetchRole(
-  userId: string,
-  supabase: ReturnType<typeof createServerClient>,
-): Promise<Role | null> {
-  // Per-request lookup; no persistent Edge cache. Phase 2 perf note:
-  // store role in auth.users.raw_app_meta_data + read from the JWT claim instead
-  // (requires a signup trigger to write the claim — already in place via fn_handle_new_user,
-  // just add an UPDATE to raw_app_meta_data when role changes).
-  const { data, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', userId)
-    .is('deleted_at', null)
-    .maybeSingle();
-  if (error) {
-    // Never swallow — log context (AGENTS.md §2), degrade to "deny" safely.
-    console.error('[middleware] users lookup failed', error.message);
-    return null;
-  }
-  return (data?.role as Role) ?? null;
+/** Citizen-facing pages that admins/cadres should NOT see (their UI is the dashboard). */
+export const PUBLIC_ADMIN_REDIRECTS: { pattern: string; match: 'exact' | 'prefix'; dashboard: string }[] = [
+  { pattern: '/', match: 'exact', dashboard: '/admin/surat' },      // role decided below
+  { pattern: '/edukasi', match: 'prefix', dashboard: '/admin/surat' },
+];
+
+function roleDashboard(role: Role): string | null {
+  if (role === 'admin_desa') return '/admin/surat';
+  if (role === 'kader_kesehatan') return '/admin/kesehatan';
+  return null;
+}
+
+function isPublicAdminRedirect(pathname: string): boolean {
+  return PUBLIC_ADMIN_REDIRECTS.some((r) =>
+    r.match === 'exact' ? pathname === r.pattern : pathname.startsWith(r.pattern),
+  );
 }
 
 function matchRule(pathname: string): RouteRule | null {
@@ -57,36 +56,65 @@ function matchRule(pathname: string): RouteRule | null {
   return null;
 }
 
-export async function middleware(req: NextRequest) {
-  const pathname = req.nextUrl.pathname;
-  const rule = matchRule(pathname);
-  if (!rule) return NextResponse.next();   // public route, nothing to enforce
-
-  // Build the SSR client the SAME way server.ts does — so RLS & cookie refresh
-  // behave identically between middleware and RSC (critical for auth-state sync).
-  const supabase = createServerClient(
+function buildClient(req: NextRequest) {
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() { return req.cookies.getAll(); },
         setAll(cookiesToSet) {
-          // Supabase SSR rotates the access token via these cookies; propagate
-          // them back onto the request so downstream handlers see the refreshed
-          // token. The final response headers are handled by NextResponse.next()
-          // returning the mutated request cookies — see Supabase SSR migration notes.
           cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
         },
       },
     },
   );
+}
 
+async function fetchRole(
+  userId: string,
+  supabase: ReturnType<typeof createServerClient>,
+): Promise<Role | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error) {
+    console.error('[middleware] users lookup failed', error.message);
+    return null;
+  }
+  return (data?.role as Role) ?? null;
+}
+
+export async function middleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+  const supabase = buildClient(req);
   const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
+  const isAuthed = !error && !!user;
+
+  // 1) Public citizen pages: if an admin/cadre is signed in, bounce them to
+  //    their dashboard so they never see the citizen UI.
+  if (isPublicAdminRedirect(pathname)) {
+    if (isAuthed && user) {
+      const role = await fetchRole(user.id, supabase);
+      const dash = roleDashboard(role as Role);
+      if (dash) {
+        return NextResponse.redirect(new URL(dash, req.url));
+      }
+    }
+    return NextResponse.next();
+  }
+
+  // 2) Protected routes (route permission matrix).
+  const rule = matchRule(pathname);
+  if (!rule) return NextResponse.next();
+
+  if (!isAuthed || !user) {
     const url = new URL('/login', req.url);
     url.searchParams.set('next', pathname);
-    const redirect = NextResponse.redirect(url);
-    return redirect;
+    return NextResponse.redirect(url);
   }
 
   const role = await fetchRole(user.id, supabase);
@@ -102,10 +130,13 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
-// Only run middleware on protected prefixes (cost: skip static assets & public
-// pages — `/`, `/edukasi` are public per the Route Permission Matrix).
+// Only run middleware on protected prefixes + the citizen home/education pages
+// (cost: skip static assets & the rest).
 export const config = {
   matcher: [
+    '/',
+    '/edukasi',
+    '/edukasi/:path*',
     '/profil',
     '/admin/kesehatan/:path*',
     '/layanan-surat/:path*',

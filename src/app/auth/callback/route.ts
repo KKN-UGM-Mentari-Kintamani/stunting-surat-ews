@@ -5,6 +5,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { fetchRoleByUserId, landingPathFor } from "@/lib/auth/landing";
+
 function safeNext(raw: string | null): string {
   if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
   return "/";
@@ -39,11 +41,16 @@ export async function GET(request: NextRequest) {
     },
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    console.error("[auth/callback] code exchange failed:", error.message);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error || !data.user) {
+    console.error("[auth/callback] code exchange failed:", error?.message);
     return NextResponse.redirect(new URL("/login?error=oauth", origin));
   }
 
+  // Route admins/cadres to their own dashboard instead of the citizen home.
+  // `response` already carries the session cookies; just re-point its location.
+  const role = await fetchRoleByUserId(data.user.id);
+  const landing = landingPathFor(role, next);
+  response.headers.set("location", new URL(landing, origin).toString());
   return response;
 }

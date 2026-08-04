@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
 import { createClient } from "@/lib/supabase/server";
+import { fetchRoleByUserId, landingPathFor } from "@/lib/auth/landing";
 
 export const metadata = {
   title: "Masuk",
@@ -20,12 +21,15 @@ export default async function LoginPage({
 }) {
   const { next, error } = await searchParams;
 
-  // Already signed in → skip straight to the destination.
+  // Already signed in → skip straight to the role-appropriate destination.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect(next && next.startsWith("/") ? next : "/");
+  if (user) {
+    const role = await fetchRoleByUserId(user.id);
+    redirect(landingPathFor(role, next));
+  }
 
   return (
     <div className="flex flex-1 items-center justify-center px-5 py-12">
