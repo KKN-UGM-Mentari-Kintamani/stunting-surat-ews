@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS public.master_jenis_surat (
 );
 CREATE INDEX IF NOT EXISTS idx_master_jenis_surat_active ON public.master_jenis_surat(is_active);
 
+-- Idempotent migration: add template_key to DBs created before this column.
+ALTER TABLE public.master_jenis_surat
+  ADD COLUMN IF NOT EXISTS template_key text NOT NULL DEFAULT 'sktm'
+    CHECK (template_key IN ('sktm','sku','skd'));
+
 -- Backfill template_key on existing rows (idempotent migration).
 UPDATE public.master_jenis_surat SET template_key = 'sktm'
   WHERE template_key IS NULL
