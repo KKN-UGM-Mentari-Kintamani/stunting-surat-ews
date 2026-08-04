@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 interface Props {
   status: StatusPermohonan | string;
   className?: string;
+  /** "sm" for dense tables, "md" (default) for card layouts. */
+  size?: "sm" | "md";
 }
 
 /** Also handles a transient "processing" pseudo-status for the admin UI. */
@@ -47,17 +49,22 @@ const STATUS_MAP: Record<string, { label: string; Icon: typeof Clock; tone: stri
   },
 };
 
-export function LetterStatusBadge({ status, className }: Props) {
+export function LetterStatusBadge({ status, className, size = "md" }: Props) {
   const entry = STATUS_MAP[status] ?? STATUS_MAP.menunggu;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-[15px] font-medium",
+        "inline-flex items-center gap-1.5 rounded-pill font-medium",
+        size === "sm" ? "px-2 py-0.5 text-[13px]" : "px-3 py-1.5 text-[15px]",
         entry.tone,
         className,
       )}
     >
-      <entry.Icon className="size-4" strokeWidth={1.5} aria-hidden />
+      <entry.Icon
+        className={size === "sm" ? "size-3.5" : "size-4"}
+        strokeWidth={1.5}
+        aria-hidden
+      />
       {entry.label}
     </span>
   );

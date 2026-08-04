@@ -98,8 +98,8 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-5xl">
-        <DialogHeader>
+      <DialogContent className="flex h-[90vh] w-[92vw] max-w-[1500px] flex-col overflow-hidden sm:max-w-none">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{item.jenis_surat.nama_surat}</DialogTitle>
           <DialogDescription>
             Diajukan {fmtTanggal(item.created_at)}
@@ -107,13 +107,14 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Left: preview draft */}
-          <div className="flex flex-col gap-2">
-            <p className="text-[13px] font-medium text-muted-foreground">
+        {/* 60/40: left = preview (stretches), right = detail+action (scrolls) */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-hidden lg:grid-cols-[3fr_2fr]">
+          {/* Left: preview draft — stretches to fill, scrolls only if taller */}
+          <div className="flex min-h-0 flex-col gap-2">
+            <p className="shrink-0 text-[13px] font-medium text-muted-foreground">
               Pratinjau Surat (tanpa TTE & nomor)
             </p>
-            <div className="max-h-[520px] overflow-y-auto rounded-md border border-border">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <LetterPreview
                 namaSurat={item.jenis_surat.nama_surat}
                 snapshot={snapshot}
@@ -121,93 +122,95 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
             </div>
           </div>
 
-          {/* Right: detail + action */}
-          <div className="flex flex-col gap-4">
-            {/* Detail */}
-            <div>
-              <p className="mb-2 text-[13px] font-medium text-muted-foreground">
-                Data Permohonan
-              </p>
-              <dl className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/40 p-3 text-[14px]">
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Nama:</dt><dd className="font-medium">{getSnap(s, "nama")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">NIK:</dt><dd className="tabular-data">{getSnap(s, "nik")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">No. KK:</dt><dd className="tabular-data">{getSnap(s, "no_kk")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">TTL:</dt><dd>{getSnap(s, "tempat_lahir")} / {getSnap(s, "tanggal_lahir")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Agama:</dt><dd>{getSnap(s, "agama")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Pekerjaan:</dt><dd>{getSnap(s, "pekerjaan")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Alamat:</dt><dd>{getSnap(s, "alamat")}</dd></div>
-                {(s.data_khusus as Record<string, string> | undefined)?.nama_usaha && (
-                  <>
-                    <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Usaha:</dt><dd>{(s.data_khusus as Record<string, string>).nama_usaha}</dd></div>
-                    <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Jenis:</dt><dd>{(s.data_khusus as Record<string, string>).jenis_usaha}</dd></div>
-                  </>
-                )}
-                <div className="border-t border-border pt-1.5" />
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Tujuan:</dt><dd>{getSnap(s, "tujuan_permohonan")}</dd></div>
-                <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">No. Telepon:</dt><dd className="tabular-data">{getSnap(s, "nomor_telepon")}</dd></div>
-                <div className="flex flex-wrap gap-2">
-                  <dt className="text-muted-foreground">Pernyataan benar:</dt>
-                  <dd className={s.pernyataan_benar ? "font-medium text-status-normal-fg" : "font-medium text-status-rejected-fg"}>
-                    {s.pernyataan_benar ? "✓ Sudah" : "✗ Belum"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            {/* Action form */}
-            {sudahDiAksi ? (
-              <div className="rounded-md border border-border bg-muted/40 p-3 text-[14px]">
-                <p className="font-medium">Status permohonan: {item.status}</p>
-                {item.catatan_admin ? (
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    Catatan: {item.catatan_admin}
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3 rounded-md border border-border p-3">
-                <p className="text-[13px] font-medium text-muted-foreground">
-                  Tindakan
+          {/* Right: detail + action — vertical scroll only on this column */}
+          <div className="min-h-0 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-4">
+              {/* Detail */}
+              <div>
+                <p className="mb-2 text-[13px] font-medium text-muted-foreground">
+                  Data Permohonan
                 </p>
-                <Select value={aksi ?? ""} onValueChange={(v) => setAksi(v as Aksi)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Pilih aksi…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="setuju">Setujui</SelectItem>
-                      <SelectItem value="revisi">Minta Revisi</SelectItem>
-                      <SelectItem value="tolak">Tolak</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <Textarea
-                  value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
-                  placeholder={
-                    catatanWajib
-                      ? "Catatan wajib diisi…"
-                      : "Catatan (opsional)…"
-                  }
-                  rows={3}
-                />
-                {catatanWajib && (
-                  <p className="text-[12px] text-muted-foreground">
-                    Catatan wajib untuk aksi ini.
-                  </p>
-                )}
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+                <dl className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/40 p-3 text-[14px]">
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Nama:</dt><dd className="font-medium">{getSnap(s, "nama")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">NIK:</dt><dd className="tabular-data">{getSnap(s, "nik")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">No. KK:</dt><dd className="tabular-data">{getSnap(s, "no_kk")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">TTL:</dt><dd>{getSnap(s, "tempat_lahir")} / {getSnap(s, "tanggal_lahir")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Agama:</dt><dd>{getSnap(s, "agama")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Pekerjaan:</dt><dd>{getSnap(s, "pekerjaan")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Alamat:</dt><dd>{getSnap(s, "alamat")}</dd></div>
+                  {(s.data_khusus as Record<string, string> | undefined)?.nama_usaha && (
+                    <>
+                      <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Usaha:</dt><dd>{(s.data_khusus as Record<string, string>).nama_usaha}</dd></div>
+                      <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Jenis:</dt><dd>{(s.data_khusus as Record<string, string>).jenis_usaha}</dd></div>
+                    </>
+                  )}
+                  <div className="border-t border-border pt-1.5" />
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Tujuan:</dt><dd>{getSnap(s, "tujuan_permohonan")}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">No. Telepon:</dt><dd className="tabular-data">{getSnap(s, "nomor_telepon")}</dd></div>
+                  <div className="flex flex-wrap gap-2">
+                    <dt className="text-muted-foreground">Pernyataan benar:</dt>
+                    <dd className={s.pernyataan_benar ? "font-medium text-status-normal-fg" : "font-medium text-status-rejected-fg"}>
+                      {s.pernyataan_benar ? "✓ Sudah" : "✗ Belum"}
+                    </dd>
+                  </div>
+                </dl>
               </div>
-            )}
+
+              {/* Action form */}
+              {sudahDiAksi ? (
+                <div className="rounded-md border border-border bg-muted/40 p-3 text-[14px]">
+                  <p className="font-medium">Status permohonan: {item.status}</p>
+                  {item.catatan_admin ? (
+                    <p className="mt-1 text-[13px] text-muted-foreground">
+                      Catatan: {item.catatan_admin}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+                  <p className="text-[13px] font-medium text-muted-foreground">
+                    Tindakan
+                  </p>
+                  <Select value={aksi ?? ""} onValueChange={(v) => setAksi(v as Aksi)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pilih aksi…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="setuju">Setujui</SelectItem>
+                        <SelectItem value="revisi">Minta Revisi</SelectItem>
+                        <SelectItem value="tolak">Tolak</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <Textarea
+                    value={catatan}
+                    onChange={(e) => setCatatan(e.target.value)}
+                    placeholder={
+                      catatanWajib
+                        ? "Catatan wajib diisi…"
+                        : "Catatan (opsional)…"
+                    }
+                    rows={3}
+                  />
+                  {catatanWajib && (
+                    <p className="text-[12px] text-muted-foreground">
+                      Catatan wajib untuk aksi ini.
+                    </p>
+                  )}
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {!sudahDiAksi && (
-          <DialogFooter className="gap-2">
+          <DialogFooter className="shrink-0 gap-2">
             <Button variant="ghost" onClick={() => { onOpenChange(false); reset(); }} disabled={isPending}>
               Cancel
             </Button>

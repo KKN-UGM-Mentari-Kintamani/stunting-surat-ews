@@ -143,15 +143,14 @@ export function ApprovalQueue({ items: initialItems }: Props) {
         </Empty>
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
-          <Table className="min-w-[760px]">
+          <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">No</TableHead>
                 <TableHead>Nama Pemohon</TableHead>
                 <TableHead>Tanggal</TableHead>
                 <TableHead>Jenis Surat</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Tindakan</TableHead>
+                <TableHead className="text-right">Status &amp; Tindakan</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -175,36 +174,36 @@ export function ApprovalQueue({ items: initialItems }: Props) {
                     <TableCell className="text-[14px]">
                       {item.jenis_surat.nama_surat}
                     </TableCell>
-                    <TableCell>
-                      <LetterStatusBadge status={item.status} />
-                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {/* PDF (open final PDF in new tab — only when approved) */}
-                        <Button
-                          variant={isApproved ? "default" : "ghost"}
-                          size="icon-xs"
-                          disabled={!isApproved || pdfPending === item.id}
-                          onClick={() => handleOpenPdf(item.id, item)}
-                          aria-label="Lihat PDF final"
-                        >
-                          {pdfPending === item.id ? (
-                            <Loader2 className="animate-spin" aria-hidden />
-                          ) : (
-                            <FileText className="size-3.5" strokeWidth={1.5} aria-hidden />
-                          )}
-                        </Button>
-                        {/* Detail (open 50:50 panel) */}
-                        <Button
-                          variant={item.status === "menunggu" || item.status === "revisi"
-                            ? "outline"
-                            : "ghost"}
-                          size="icon-xs"
-                          onClick={() => setOpenId(item.id)}
-                          aria-label="Detail permohonan"
-                        >
-                          <Eye className="size-3.5" strokeWidth={1.5} aria-hidden />
-                        </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <LetterStatusBadge status={item.status} size="sm" />
+                        <div className="flex items-center gap-1">
+                          {/* PDF (open final PDF in new tab — only when approved) */}
+                          <Button
+                            variant={isApproved ? "default" : "ghost"}
+                            size="icon-xs"
+                            disabled={!isApproved || pdfPending === item.id}
+                            onClick={() => handleOpenPdf(item.id, item)}
+                            aria-label="Lihat PDF final"
+                          >
+                            {pdfPending === item.id ? (
+                              <Loader2 className="animate-spin" aria-hidden />
+                            ) : (
+                              <FileText className="size-3.5" strokeWidth={1.5} aria-hidden />
+                            )}
+                          </Button>
+                          {/* Detail (open 50:50 panel) */}
+                          <Button
+                            variant={item.status === "menunggu" || item.status === "revisi"
+                              ? "outline"
+                              : "ghost"}
+                            size="icon-xs"
+                            onClick={() => setOpenId(item.id)}
+                            aria-label="Detail permohonan"
+                          >
+                            <Eye className="size-3.5" strokeWidth={1.5} aria-hidden />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
