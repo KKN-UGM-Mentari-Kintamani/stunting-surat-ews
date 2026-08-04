@@ -50,6 +50,17 @@ function fmtTanggal(v: string): string {
   });
 }
 
+function fmtWaktu(v?: string | null): string {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleString("id-ID", {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+}
+
 function getSnap(s: Record<string, unknown>, key: string): string {
   return (s[key] as string) ?? "—";
 }
@@ -153,6 +164,20 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                       {s.pernyataan_benar ? "✓ Sudah" : "✗ Belum"}
                     </dd>
                   </div>
+                </dl>
+              </div>
+
+              {/* Process timestamps */}
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-[14px]">
+                <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">
+                  Waktu Proses
+                </p>
+                <dl className="flex flex-col gap-1">
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Diajukan:</dt><dd className="tabular-data">{fmtWaktu(item.created_at)}</dd></div>
+                  <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Terakhir diproses:</dt><dd className="tabular-data">{fmtWaktu(item.updated_at)}</dd></div>
+                  {item.status === "disetujui" && (
+                    <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Disetujui:</dt><dd className="tabular-data">{fmtWaktu(item.disetujui_at)}</dd></div>
+                  )}
                 </dl>
               </div>
 

@@ -17,6 +17,8 @@ export interface QueueItem {
   pdf_final_url: string | null;
   data_isian_snapshot: Record<string, unknown>;
   created_at: string;
+  updated_at: string | null;
+  disetujui_at: string | null;
   jenis_surat: { nama_surat: string; kode_klasifikasi: string };
 }
 
@@ -25,7 +27,7 @@ export default async function AdminSuratPage() {
   const { data, error } = await supabase
     .from("permohonan_surat")
     .select(
-      "id, status, catatan_admin, nomor_surat_final, kode_verifikasi, pdf_final_url, data_isian_snapshot, created_at, jenis_surat:master_jenis_surat(nama_surat, kode_klasifikasi)",
+      "id, status, catatan_admin, nomor_surat_final, kode_verifikasi, pdf_final_url, data_isian_snapshot, created_at, updated_at, disetujui_at, jenis_surat:master_jenis_surat(nama_surat, kode_klasifikasi)",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
@@ -35,7 +37,7 @@ export default async function AdminSuratPage() {
     return <p className="py-10 text-destructive">Gagal memuat data.</p>;
   }
 
-  // Flatten nested jenis_surat array from Supabase.
+  // Flatten nested jenis_surat (Supabase returns either an array or a single object).
   const items = ((data ?? []) as unknown as Array<{
     id: string;
     status: string;
@@ -45,18 +47,27 @@ export default async function AdminSuratPage() {
     pdf_final_url: string | null;
     data_isian_snapshot: Record<string, unknown>;
     created_at: string;
-    jenis_surat: { nama_surat: string; kode_klasifikasi: string }[];
-  }>).map((r) => ({
-    id: r.id,
-    status: r.status,
-    catatan_admin: r.catatan_admin,
-    nomor_surat_final: r.nomor_surat_final,
-    kode_verifikasi: r.kode_verifikasi,
-    pdf_final_url: r.pdf_final_url,
-    data_isian_snapshot: r.data_isian_snapshot,
-    created_at: r.created_at,
-    jenis_surat: r.jenis_surat?.[0] ?? { nama_surat: "—", kode_klasifikasi: "—" },
-  }));
+    updated_at: string | null;
+    disetujui_at: string | null;
+    jenis_surat: { nama_surat: string; kode_klasifikasi: string }[] | { nama_surat: string; kode_klasifikasi: string } | null;
+  }>).map((r) => {
+    const jenis = Array.isArray(r.jenis_surat)
+      ? r.jenis_surat[0]
+      : r.jenis_surat;
+    return {
+      id: r.id,
+      status: r.status,
+      catatan_admin: r.catatan_admin,
+      nomor_surat_final: r.nomor_surat_final,
+      kode_verifikasi: r.kode_verifikasi,
+      pdf_final_url: r.pdf_final_url,
+      data_isian_snapshot: r.data_isian_snapshot,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      disetujui_at: r.disetujui_at,
+      jenis_surat: jenis ?? { nama_surat: "—", kode_klasifikasi: "—" },
+    };
+  });
 
   return <ApprovalQueue items={items as unknown as QueueItem[]} />;
 }

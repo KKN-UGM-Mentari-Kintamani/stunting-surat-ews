@@ -110,6 +110,50 @@ export async function submitPermohonanAction(
   return { ok: true, data: { id: data.id } };
 }
 
+/**
+ * Resubmit an existing letter that is in 'revisi' status (PRD §4.1). Updates
+ * the same request (not a new one) and returns it to the menunggu queue,
+ * clearing the admin note. The existing snapshot is kept (re-used as-is —
+ * per agreed scope, no form re-edit yet). RLS enforces ownership; we also
+ * guard status === 'revisi' explicitly.
+ */
+export async function resubmitPermohonanAction(
+  permohonanId: string,
+): Promise<ActionResult> {
+  const userId = await getAuthUserId();
+  if (!userId) return { ok: false, error: "Sesi berakhir, silakan masuk lagi." };
+
+  const supabase = await createClient();
+  const { data: existing, error: checkErr } = await supabase
+    .from("permohonan_surat")
+    .select("id, status")
+    .eq("id", permohonanId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (checkErr || !existing) {
+    return { ok: false, error: "Permohonan tidak ditemukan." };
+  }
+  if (existing.status !== "revisi") {
+    return { ok: false, error: "Permohonan ini tidak sedang dalam status revisi." };
+  }
+
+  const { error } = await supabase
+    .from("permohonan_surat")
+    .update({
+      status: "menunggu",
+      catatan_admin: null,
+    })
+    .eq("id", permohonanId);
+  if (error) {
+    console.error("[layanan-surat] resubmitPermohonan failed:", error.message);
+    return { ok: false, error: "Gagal mengajukan ulang. Coba lagi." };
+  }
+  revalidatePath("/layanan-surat");
+  revalidatePath("/profil");
+  return { ok: true };
+}
+
 // ---------- Letter history (for /profil tab & /layanan-surat) ----------
 
 export interface MyLetterRow {
@@ -149,9 +193,10 @@ export async function getMyLettersAction(): Promise<ActionResult<MyLetterRow[]>>
 
 /**
  * Generates a short-lived signed URL for downloading the approved letter PDF
- * from the PRIVATE surat-pdf bucket. Verifies the requesting user owns the
- * letter before generating the URL. Returns null if PDF has been purged
- * (3-day retention) or the letter is not yet approved.
+ * from the PRIVATE surat-pdf bucket.
+ *  - warga  → only their own letters
+ *  - admin_desa → any letter (for the admin queue / walk-in service)
+ * Returns null if PDF has been purged (3-day retention) or not yet approved.
  */
 export async function downloadLetterPdfAction(
   permohonanId: string,
@@ -159,15 +204,23 @@ export async function downloadLetterPdfAction(
   const userId = await getAuthUserId();
   if (!userId) return { ok: false, error: "Sesi berakhir." };
 
-  // Verify ownership + that PDF still exists.
   const supabase = await createClient();
-  const { data: row, error } = await supabase
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  const isAdmin = profile?.role === "admin_desa";
+
+  // Verify access + that PDF still exists.
+  let query = supabase
     .from("permohonan_surat")
     .select("pdf_final_url, status, user_id")
     .eq("id", permohonanId)
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .maybeSingle();
+    .is("deleted_at", null);
+  if (!isAdmin) query = query.eq("user_id", userId); // warga: own only
+  const { data: row, error } = await query.maybeSingle();
   if (error || !row) return { ok: false, error: "Surat tidak ditemukan." };
   if (row.status !== "disetujui") return { ok: false, error: "Surat belum disetujui." };
   if (!row.pdf_final_url) {
