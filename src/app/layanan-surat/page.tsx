@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 
 import { LayananSuratClient } from "@/app/layanan-surat/_components/layanan-surat-client";
 import { createClient } from "@/lib/supabase/server";
+import type { KadesConfig } from "@/lib/surat/types";
 
 export const metadata = {
   title: "Layanan Surat",
@@ -27,7 +28,7 @@ export default async function LayananSuratPage() {
   if (!user) notFound();
 
   // Fetch profil + consent + letter types in parallel.
-  const [profilRes, consentRes, typesRes] = await Promise.all([
+  const [profilRes, consentRes, typesRes, kadesRes] = await Promise.all([
     supabase
       .from("warga_profil")
       .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,agama,pekerjaan,alamat")
@@ -43,11 +44,17 @@ export default async function LayananSuratPage() {
       .from("master_jenis_surat")
       .select("id,nama_surat,kode_klasifikasi")
       .eq("is_active", true),
+    supabase
+      .from("surat_kades_config")
+      .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
+      .eq("id", 1)
+      .maybeSingle(),
   ]);
 
   const profil = profilRes.data ?? null;
   const consented = !!consentRes.data?.consent_given_at;
   const jenisSuratList = (typesRes.data ?? []) as JenisSurat[];
+  const kades = (kadesRes.data as KadesConfig | null) ?? null;
 
   return (
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-8 px-5 py-10 md:px-8 md:py-14">
@@ -59,6 +66,7 @@ export default async function LayananSuratPage() {
         initialProfil={profil}
         consented={consented}
         jenisSuratList={jenisSuratList}
+        kades={kades}
       />
     </div>
   );

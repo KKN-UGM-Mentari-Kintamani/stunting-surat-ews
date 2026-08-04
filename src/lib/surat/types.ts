@@ -3,6 +3,14 @@
  */
 export type StatusPermohonan = 'menunggu' | 'revisi' | 'disetujui' | 'ditolak';
 
+/** Kepala Desa / letter signer configuration (surat_kades_config). */
+export interface KadesConfig {
+  nama_kades: string;
+  nip_kades: string | null;
+  jabatan: string | null;
+  ttd_cap_url: string | null;
+}
+
 export interface WargaProfilData {
   nik: string;
   no_kk?: string;

@@ -10,7 +10,7 @@ import { useState } from "react";
 import { WargaProfilForm } from "@/app/layanan-surat/_components/warga-profil-form";
 import { LetterRequestForm } from "@/app/layanan-surat/_components/letter-request-form";
 import { LetterHistory } from "@/app/layanan-surat/_components/letter-history";
-import type { WargaProfilData } from "@/lib/surat/types";
+import type { KadesConfig, WargaProfilData } from "@/lib/surat/types";
 
 interface JenisSurat {
   id: string;
@@ -23,6 +23,7 @@ interface Props {
   initialProfil: WargaProfilData | null;
   consented: boolean;
   jenisSuratList: JenisSurat[];
+  kades?: KadesConfig | null;
 }
 
 export function LayananSuratClient({
@@ -30,6 +31,7 @@ export function LayananSuratClient({
   initialProfil,
   consented,
   jenisSuratList,
+  kades,
 }: Props) {
   const [profil, setProfil] = useState<WargaProfilData | null>(initialProfil);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -61,6 +63,7 @@ export function LayananSuratClient({
       <LetterRequestForm
         profil={profil}
         jenisSuratList={jenisSuratList}
+        kades={kades}
         onSubmitted={() => setRefreshKey((k) => k + 1)}
       />
       <LetterHistory key={refreshKey} />

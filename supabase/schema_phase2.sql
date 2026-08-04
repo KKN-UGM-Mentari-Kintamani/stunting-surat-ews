@@ -162,6 +162,14 @@ CREATE POLICY kades_config_manage_admin ON public.surat_kades_config
   FOR ALL USING (public.fn_is_admin_desa())
   WITH CHECK (public.fn_is_admin_desa());
 
+-- Warga login (authenticated) perlu membaca identitas penanda tangan (nama/
+-- jabatan/NIP Kades) untuk pratinjau surat di /layanan-surat. Data ini bersifat
+-- publik — bukan data pribadi warga. Kolom ttd_cap_url hanyalah path storage
+-- (bucket 'surat-ttd' bersifat private), bukan isi berkas.
+DROP POLICY IF EXISTS kades_config_select_authenticated ON public.surat_kades_config;
+CREATE POLICY kades_config_select_authenticated ON public.surat_kades_config
+  FOR SELECT USING (auth.role() = 'authenticated');
+
 -- ---------- master_jenis_surat (public read for dropdowns; manage = admin_desa) ----------
 DROP POLICY IF EXISTS master_jenis_select_public ON public.master_jenis_surat;
 CREATE POLICY master_jenis_select_public ON public.master_jenis_surat

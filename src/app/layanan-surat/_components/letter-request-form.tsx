@@ -8,7 +8,7 @@ import { useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, FileText, Loader2 } from "lucide-react";
 
 import { submitPermohonanAction } from "@/app/layanan-surat/_actions";
-import type { WargaProfilData } from "@/lib/surat/types";
+import type { KadesConfig, WargaProfilData } from "@/lib/surat/types";
 import { buildSnapshot } from "@/lib/surat/snapshot";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +46,7 @@ interface JenisSurat {
 interface Props {
   profil: WargaProfilData;
   jenisSuratList: JenisSurat[];
+  kades?: KadesConfig | null;
   onSubmitted: () => void;
 }
 
@@ -53,7 +54,7 @@ type Step = "form" | "preview";
 
 const labelClass = "text-[15px] font-medium leading-snug";
 
-export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props) {
+export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }: Props) {
   const [step, setStep] = useState<Step>("form");
   const [jenisId, setJenisId] = useState("");
   const [nama, setNama] = useState(profil.nama);
@@ -154,12 +155,12 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="f-nama" className={labelClass}>Nama Pemohon <RequiredMark /></FieldLabel>
+                  <FieldLabel htmlFor="f-nama" className={labelClass}>Nama Lengkap Pemohon<RequiredMark /></FieldLabel>
                   <Input id="f-nama" value={nama} onChange={(e) => setNama(e.target.value)}
                     placeholder="Sesuai KTP / atas nama" />
-                  <FieldDescription className="text-[13px] text-muted-foreground">
+                  {/* <FieldDescription className="text-[13px] text-muted-foreground">
                     Bisa diubah untuk atas nama anggota keluarga.
-                  </FieldDescription>
+                  </FieldDescription> */}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="f-nik" className={labelClass}>NIK <RequiredMark /></FieldLabel>
@@ -185,22 +186,22 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
 
               {/* Administrative consideration inputs (shown to the verifier admin) */}
               <div className="mt-1 border-t border-border pt-4">
-                <p className="mb-3 text-[13px] font-medium text-muted-foreground">
+                {/* <p className="mb-3 text-[13px] font-medium text-muted-foreground">
                   Data ini digunakan perangkat desa untuk menilai permohonan Anda.
-                </p>
+                </p> */}
                 <Field>
                   <FieldLabel htmlFor="f-tujuan" className={labelClass}>Tujuan Permohonan Surat <RequiredMark /></FieldLabel>
                   <Input id="f-tujuan" value={tujuan} onChange={(e) => setTujuan(e.target.value)}
                     placeholder="Contoh: Untuk pengajuan bantuan sosial" />
                 </Field>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 mt-2">
                   <Field>
                     <FieldLabel htmlFor="f-telepon" className={labelClass}>Nomor Telepon</FieldLabel>
                     <Input id="f-telepon" value={telepon} onChange={(e) => setTelepon(e.target.value)}
                       inputMode="tel" placeholder="Contoh: 081234567890" />
-                    <FieldDescription className="text-[13px] text-muted-foreground">
+                    {/* <FieldDescription className="text-[13px] text-muted-foreground">
                       Untuk konfirmasi jika diperlukan.
-                    </FieldDescription>
+                    </FieldDescription> */}
                   </Field>
                 </div>
                 <Field orientation="horizontal" className="items-start">
@@ -208,9 +209,9 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
                     id="f-pernyataan"
                     checked={pernyataan}
                     onCheckedChange={(v) => setPernyataan(v === true)}
-                    className="mt-1"
+                    className="mt-4"
                   />
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 mt-3">
                     <FieldLabel htmlFor="f-pernyataan" className={labelClass}>
                       Saya menyatakan data yang diisi adalah benar &amp; bertanggung jawab penuh <RequiredMark />
                     </FieldLabel>
@@ -252,6 +253,7 @@ export function LetterRequestForm({ profil, jenisSuratList, onSubmitted }: Props
           <div className="flex flex-col gap-5">
             <LetterPreview
               namaSurat={selectedType?.nama_surat ?? "—"}
+              kades={kades}
               snapshot={buildSnapshot({ ...profil, nama, nik }, {
                 dataKhusus: isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined,
                 tujuanPermohonan: tujuan.trim(),

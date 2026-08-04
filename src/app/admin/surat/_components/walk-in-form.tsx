@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { createWalkInAction } from "@/app/admin/surat/_actions";
 import { buildSnapshot } from "@/lib/surat/snapshot";
 import { emptyProfil } from "@/lib/surat/snapshot";
-import type { IsianSnapshot } from "@/lib/surat/types";
+import type { IsianSnapshot, KadesConfig } from "@/lib/surat/types";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +30,7 @@ const labelClass = "text-[15px] font-medium leading-snug";
 
 type Step = "form" | "preview";
 
-export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] }) {
+export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSurat[]; kades?: KadesConfig | null }) {
   const [step, setStep] = useState<Step>("form");
   const [jenisId, setJenisId] = useState("");
   const [nama, setNama] = useState("");
@@ -126,6 +126,7 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
             <LetterPreview
               namaSurat={selectedType?.nama_surat ?? "Surat"}
               snapshot={previewSnapshot}
+              kades={kades}
             />
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
             <div className="flex items-center gap-2">
@@ -193,9 +194,9 @@ export function WalkInForm({ jenisSuratList }: { jenisSuratList: JenisSurat[] })
 
               {/* Administrative consideration inputs */}
               <div className="mt-1 border-t border-border pt-4">
-                <p className="mb-3 text-[13px] font-medium text-muted-foreground">
+                {/* <p className="mb-3 text-[13px] font-medium text-muted-foreground">
                   Data ini digunakan perangkat desa untuk menilai permohonan.
-                </p>
+                </p> */}
                 <Field><FieldLabel className={labelClass}>Tujuan Permohonan Surat <RequiredMark /></FieldLabel>
                   <Input value={tujuan} onChange={(e) => setTujuan(e.target.value)}
                     placeholder="Contoh: Untuk pengajuan bantuan sosial" /></Field>
