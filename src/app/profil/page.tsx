@@ -8,7 +8,9 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { AutoOpenAddChild } from "@/app/profil/_components/auto-open-add-child";
+import { WargaProfileCard } from "@/app/profil/_components/warga-profile-card";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
 import { ChildrenSection } from "@/app/profil/_components/children-section";
 import { ConsentGate } from "@/app/profil/_components/consent-gate";
 import { ProfileSummary } from "@/app/profil/_components/profile-summary";
@@ -53,17 +55,35 @@ async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
         nama={data.user.nama_lengkap}
         email={data.user.email}
         childCount={data.children.filter((c) => c.inRange).length}
+        suratProfilLengkap={!!data.wargaProfil}
       />
 
       {!consented && <ConsentGate />}
 
       {consented && (
-        <ProfileTabs>
-          <>
-            <AutoOpenAddChild autoOpen={autoAddNew} />
-            <ChildrenSection items={data.children} />
-          </>
-        </ProfileTabs>
+        <>
+          {data.wargaProfil ? (
+            <WargaProfileCard
+              profil={data.wargaProfil}
+              onSaved={() => { /* page revalidates after save */ }}
+            />
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 p-4">
+              <p className="text-[15px] text-muted-foreground">
+                Data warga untuk layanan surat belum dilengkapi.
+              </p>
+              <Button asChild variant="default" size="sm">
+                <a href="/layanan-surat">Lengkapi</a>
+              </Button>
+            </div>
+          )}
+          <ProfileTabs>
+            <>
+              <AutoOpenAddChild autoOpen={autoAddNew} />
+              <ChildrenSection items={data.children} />
+            </>
+          </ProfileTabs>
+        </>
       )}
     </>
   );

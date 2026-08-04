@@ -7,6 +7,7 @@ import { ageMonthsFromBirth, MAX_AGE_MONTHS } from "@/lib/calc/lms";
 
 // Re-use the public ArticleCardData type from /edukasi.
 import type { ArticleCardData } from "@/app/edukasi/page";
+import type { WargaProfilData } from "@/lib/surat/types";
 
 export interface ChildRow {
   id: string;
@@ -36,6 +37,8 @@ export interface ChildWithMeasurements extends ChildRow {
 export interface ProfileData {
   user: { nama_lengkap: string; email: string; consent_given_at: string | null };
   children: ChildWithMeasurements[];
+  /** Data warga untuk layanan surat (null jika belum diisi). */
+  wargaProfil: WargaProfilData | null;
 }
 
 export interface ChildSummary {
@@ -134,6 +137,19 @@ export async function getProfileData(): Promise<ProfileData> {
   if (meErr || !me) throw new Error("Profile not found");
   const meRow = me as ProfileData["user"];
 
+  // Data warga untuk layanan surat (nullable).
+  const { data: wpRow, error: wpErr } = await supabase
+    .from("warga_profil")
+    .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,agama,pekerjaan,alamat")
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (wpErr) {
+    console.error("[queries] warga_profil fetch failed:", wpErr.message);
+    throw wpErr;
+  }
+  const wargaProfil = (wpRow as WargaProfilData | null) ?? null;
+
   const { data: anakRows, error: anakErr } = await supabase
     .from("anak")
     .select("id, nama_anak, jenis_kelamin, tanggal_lahir")
@@ -165,5 +181,5 @@ export async function getProfileData(): Promise<ProfileData> {
     }),
   );
 
-  return { user: meRow, children: withMeasurements };
+  return { user: meRow, children: withMeasurements, wargaProfil };
 }

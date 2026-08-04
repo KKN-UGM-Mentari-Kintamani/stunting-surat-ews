@@ -17,20 +17,31 @@ interface Props {
   nama: string;
   email: string;
   childCount: number;
+  /** Whether the citizen has filled their letter-service profile (warga_profil). */
+  suratProfilLengkap: boolean;
 }
 
-export function ProfileSummary({ nama, email, childCount }: Props) {
+export function ProfileSummary({ nama, email, childCount, suratProfilLengkap }: Props) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="flex size-11 items-center justify-center rounded-md bg-primary/10 text-primary">
             <Sprout className="size-6" strokeWidth={1.5} aria-hidden />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <CardTitle className="truncate">{nama}</CardTitle>
             <CardDescription className="truncate">{email}</CardDescription>
           </div>
+          {suratProfilLengkap ? (
+            <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-normal-bg px-3 py-1 text-[13px] font-medium text-status-normal-fg">
+              Data layanan surat: Lengkap
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-waiting-bg px-3 py-1 text-[13px] font-medium text-status-waiting-fg">
+              Data layanan surat: Belum
+            </span>
+          )}
         </div>
       </CardHeader>
       <CardContent>

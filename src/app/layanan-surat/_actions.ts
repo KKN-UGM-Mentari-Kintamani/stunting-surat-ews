@@ -57,6 +57,7 @@ export async function saveWargaProfilAction(
     return { ok: false, error: "Gagal menyimpan profil. Coba lagi." };
   }
   revalidatePath("/layanan-surat");
+  revalidatePath("/profil");
   return { ok: true };
 }
 

@@ -174,7 +174,7 @@ export function LetterHistory() {
                     <TableCell className="tabular-data text-[14px]">
                       {fmtTgl(r.created_at)}
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-[14px]">
                       {r.jenis_surat?.nama_surat ?? "Surat"}
                     </TableCell>
                     <TableCell className="tabular-data text-[14px]">
@@ -188,7 +188,7 @@ export function LetterHistory() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1.5"
+                          className="gap-1.5 text-[14px]"
                           disabled={!r.pdf_final_url || isPending}
                           onClick={() => handleDownload(r.id)}
                         >
@@ -199,18 +199,18 @@ export function LetterHistory() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1.5"
+                          className="gap-1.5 text-[14px]"
                           onClick={() => setNoteId(r.id)}
                         >
                           <MessageSquareText className="size-4" strokeWidth={1.5} aria-hidden />
                           Lihat Catatan
                         </Button>
                       ) : r.status === "disetujui" && !r.pdf_final_url ? (
-                        <span className="text-[13px] text-muted-foreground">
+                        <span className="text-[14px] text-muted-foreground">
                           Masa unduh berakhir
                         </span>
                       ) : (
-                        <span className="text-[13px] text-muted-foreground">
+                        <span className="text-[14px] text-muted-foreground">
                           Menunggu proses
                         </span>
                       )}

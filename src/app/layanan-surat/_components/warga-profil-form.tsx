@@ -49,19 +49,28 @@ type ProfilForm = z.infer<typeof profilSchema>;
 const labelClass = "text-[15px] font-medium leading-snug";
 
 interface Props {
+  /** Prefill values — set when editing an existing profile. */
+  initial?: WargaProfilData;
   onSaved: (profil: WargaProfilData) => void;
 }
 
-export function WargaProfilForm({ onSaved }: Props) {
+export function WargaProfilForm({ initial, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
+  const isEdit = !!initial;
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<ProfilForm>({
     resolver: zodResolver(profilSchema),
     mode: "onChange",
     defaultValues: {
-      nik: "", no_kk: "", nama: "", tempat_lahir: "",
-      tanggal_lahir: "", agama: "", pekerjaan: "", alamat: "",
+      nik: initial?.nik ?? "",
+      no_kk: initial?.no_kk ?? "",
+      nama: initial?.nama ?? "",
+      tempat_lahir: initial?.tempat_lahir ?? "",
+      tanggal_lahir: initial?.tanggal_lahir ?? "",
+      agama: initial?.agama ?? "",
+      pekerjaan: initial?.pekerjaan ?? "",
+      alamat: initial?.alamat ?? "",
     },
   });
 
@@ -84,15 +93,22 @@ export function WargaProfilForm({ onSaved }: Props) {
       <CardHeader>
         <div className="flex items-center gap-3">
           <UserRound className="size-6 text-primary" strokeWidth={1.5} aria-hidden />
-          <CardTitle>Lengkapi Profil Anda</CardTitle>
+          <CardTitle>{isEdit ? "Ubah Data Warga" : "Lengkapi Profil Anda"}</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
-        <p className="mb-4 text-[15px] leading-relaxed text-muted-foreground">
-          Untuk mengajukan surat, lengkapi data identitas (NIK, Kartu Keluarga,
-          dan alamat). Data ini akan digunakan untuk mengisi formulir surat
-          secara otomatis.
-        </p>
+        {isEdit ? (
+          <p className="mb-4 text-[15px] leading-relaxed text-muted-foreground">
+            Perubahan berlaku untuk pengajuan surat berikutnya dan tidak mengubah
+            surat yang sudah diterbitkan.
+          </p>
+        ) : (
+          <p className="mb-4 text-[15px] leading-relaxed text-muted-foreground">
+            Untuk mengajukan surat, lengkapi data identitas (NIK, Kartu Keluarga,
+            dan alamat). Data ini akan digunakan untuk mengisi formulir surat
+            secara otomatis.
+          </p>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
           <FieldGroup>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -176,7 +192,7 @@ export function WargaProfilForm({ onSaved }: Props) {
 
           <Button type="submit" disabled={!isValid || !agama || isPending} className="gap-2">
             {isPending && <Loader2 className="animate-spin" aria-hidden />}
-            Simpan Profil
+            {isEdit ? "Simpan Perubahan" : "Simpan Profil"}
           </Button>
         </form>
       </CardContent>
