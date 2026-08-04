@@ -34,7 +34,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-type Aksi = "setuju" | "revisi" | "tolak";
+type Aksi = "setuju" | "tolak";
 
 interface Props {
   item: QueueItem;
@@ -73,9 +73,9 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
 
   const s = item.data_isian_snapshot;
   const snapshot = s as unknown as IsianSnapshot;
-  const catatanWajib = aksi === "revisi" || aksi === "tolak";
+  const catatanWajib = aksi === "tolak";
   const canSubmit = !!aksi && (!catatanWajib || catatan.trim().length > 0);
-  const sudahDiAksi = item.status !== "menunggu" && item.status !== "revisi";
+  const sudahDiAksi = item.status !== "menunggu";
 
   function reset() {
     setAksi(null);
@@ -94,7 +94,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
       }
       onActionDone(
         item.id,
-        aksi === "setuju" ? "disetujui" : aksi === "revisi" ? "revisi" : "ditolak",
+        aksi === "setuju" ? "disetujui" : "ditolak",
       );
       onOpenChange(false);
       reset();
@@ -201,11 +201,10 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                       <SelectValue placeholder="Pilih aksi…" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="setuju">Setujui</SelectItem>
-                        <SelectItem value="revisi">Minta Revisi</SelectItem>
-                        <SelectItem value="tolak">Tolak</SelectItem>
-                      </SelectGroup>
+                    <SelectGroup>
+                      <SelectItem value="setuju">Setujui</SelectItem>
+                      <SelectItem value="tolak">Tolak</SelectItem>
+                    </SelectGroup>
                     </SelectContent>
                   </Select>
                   <Textarea

@@ -3,18 +3,18 @@
 /* src/app/layanan-surat/_components/letter-history.tsx
  * Riwayat pengajuan surat warga — tabel (menyamakan antrian admin).
  * Kolom: Tanggal · Jenis Surat · Nomor · Status · Tindakan.
- *   - disetujui → unduh PDF (signed URL) + kode verifikasi
- *   - revisi    → "Edit & Ajukan Ulang" (PRD §4.1 — edit permohonan yang sama)
- *   - ditolak   → alasan (catatan admin)
+ *   - disetujui → "Unduh PDF"
+ *   - ditolak   → "Lihat Catatan" (dialog berisi alasan admin)
+ *   - menunggu  → menunggu proses
  * PDF yang sudah lewat 3 hari → pesan "hubungi kantor desa".
+ * Status "revisi" telah dihapus dari alur (admin menolak dgn komentar).
  */
 import { useEffect, useState, useTransition } from "react";
-import { Download, FileEdit } from "lucide-react";
+import { Download, MessageSquareText } from "lucide-react";
 
 import {
   getMyLettersAction,
   downloadLetterPdfAction,
-  resubmitPermohonanAction,
 } from "@/app/layanan-surat/_actions";
 import type { MyLetterRow } from "@/app/layanan-surat/_actions";
 import { LetterStatusBadge } from "@/components/surat/letter-status-badge";
@@ -25,6 +25,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -47,7 +54,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const FILTERS = [
   { value: "semua", label: "Semua Status" },
   { value: "menunggu", label: "Menunggu" },
-  { value: "revisi", label: "Perlu Revisi" },
   { value: "disetujui", label: "Disetujui" },
   { value: "ditolak", label: "Ditolak" },
 ];
@@ -72,10 +78,10 @@ export function LetterHistory() {
   const [filter, setFilter] = useState("semua");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [noteId, setNoteId] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
-  const load = () => {
+  useEffect(() => {
     let active = true;
     (async () => {
       const res = await getMyLettersAction();
@@ -89,13 +95,13 @@ export function LetterHistory() {
       }
     })();
     return () => { active = false; };
-  };
-
-  useEffect(() => load(), []);
+  }, []);
 
   const filtered = filter === "semua"
     ? rows
     : rows.filter((r) => r.status === filter);
+
+  const noteRow = rows.find((r) => r.id === noteId) ?? null;
 
   function handleDownload(id: string) {
     setError(null);
@@ -110,18 +116,6 @@ export function LetterHistory() {
         return;
       }
       window.open(res.data.url, "_blank");
-    });
-  }
-
-  function handleResubmit(id: string) {
-    setError(null);
-    setBusy(id);
-    // Resubmit the same request (PRD §4.1); snapshot is kept server-side.
-    start(async () => {
-      const res = await resubmitPermohonanAction(id);
-      setBusy(null);
-      if (!res.ok) { setError(res.error); return; }
-      load();
     });
   }
 
@@ -164,7 +158,7 @@ export function LetterHistory() {
           </Empty>
         ) : (
           <div className="overflow-x-auto rounded-md border border-border">
-            <Table className="min-w-[720px]">
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
@@ -175,80 +169,75 @@ export function LetterHistory() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r) => {
-                  const sd = r.status;
-                  return (
-                    <TableRow key={r.id}>
-                      <TableCell className="tabular-data text-[14px]">
-                        {fmtTgl(r.created_at)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {r.jenis_surat?.nama_surat ?? "Surat"}
-                        {r.status === "revisi" && r.catatan_admin && (
-                          <span className="block text-[12px] font-normal text-status-revision-fg">
-                            Catatan: {r.catatan_admin}
-                          </span>
-                        )}
-                        {r.status === "ditolak" && r.catatan_admin && (
-                          <span className="block text-[12px] font-normal text-status-rejected-fg">
-                            Alasan: {r.catatan_admin}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="tabular-data text-[14px]">
-                        {r.nomor_surat_final ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        <LetterStatusBadge status={sd} size="sm" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {sd === "disetujui" ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5"
-                              disabled={!r.pdf_final_url || isPending}
-                              onClick={() => handleDownload(r.id)}
-                            >
-                              <Download className="size-4" strokeWidth={1.5} aria-hidden />
-                              Unduh PDF
-                            </Button>
-                            {r.kode_verifikasi && (
-                              <span className="tabular-data text-[13px] text-muted-foreground">
-                                {r.kode_verifikasi}
-                              </span>
-                            )}
-                          </div>
-                        ) : sd === "revisi" ? (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="gap-1.5"
-                            disabled={busy === r.id}
-                            onClick={() => handleResubmit(r.id)}
-                          >
-                            <FileEdit className="size-4" strokeWidth={1.5} aria-hidden />
-                            {busy === r.id ? "Mengirim…" : "Edit & Ajukan Ulang"}
-                          </Button>
-                        ) : sd === "disetujui" && !r.pdf_final_url ? (
-                          <span className="text-[13px] text-muted-foreground">
-                            Masa unduh berakhir
-                          </span>
-                        ) : (
-                          <span className="text-[13px] text-muted-foreground">
-                            Menunggu proses
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {filtered.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="tabular-data text-[14px]">
+                      {fmtTgl(r.created_at)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {r.jenis_surat?.nama_surat ?? "Surat"}
+                    </TableCell>
+                    <TableCell className="tabular-data text-[14px]">
+                      {r.nomor_surat_final ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <LetterStatusBadge status={r.status} size="sm" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {r.status === "disetujui" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          disabled={!r.pdf_final_url || isPending}
+                          onClick={() => handleDownload(r.id)}
+                        >
+                          <Download className="size-4" strokeWidth={1.5} aria-hidden />
+                          Unduh PDF
+                        </Button>
+                      ) : r.status === "ditolak" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => setNoteId(r.id)}
+                        >
+                          <MessageSquareText className="size-4" strokeWidth={1.5} aria-hidden />
+                          Lihat Catatan
+                        </Button>
+                      ) : r.status === "disetujui" && !r.pdf_final_url ? (
+                        <span className="text-[13px] text-muted-foreground">
+                          Masa unduh berakhir
+                        </span>
+                      ) : (
+                        <span className="text-[13px] text-muted-foreground">
+                          Menunggu proses
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
         )}
       </CardContent>
+
+      {/* Lihat Catatan (untuk ditolak) */}
+      <Dialog open={!!noteRow} onOpenChange={(v) => { if (!v) setNoteId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Catatan Penolakan</DialogTitle>
+            <DialogDescription>
+              {noteRow?.jenis_surat?.nama_surat ?? "Surat"} · Diajukan{" "}
+              {noteRow ? fmtTgl(noteRow.created_at) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="rounded-md border border-border bg-muted/40 p-4 text-[15px] leading-relaxed">
+            {noteRow?.catatan_admin || "Tidak ada catatan."}
+          </p>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

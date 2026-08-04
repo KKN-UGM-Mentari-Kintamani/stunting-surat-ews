@@ -43,7 +43,6 @@ interface Props {
 const FILTERS = [
   { value: "semua", label: "Semua Status" },
   { value: "menunggu", label: "Menunggu" },
-  { value: "revisi", label: "Perlu Revisi" },
   { value: "disetujui", label: "Disetujui" },
   { value: "ditolak", label: "Ditolak" },
 ];
@@ -196,7 +195,7 @@ export function ApprovalQueue({ items: initialItems }: Props) {
                         </Button>
                         {/* Detail (open 50:50 panel) */}
                         <Button
-                          variant={item.status === "menunggu" || item.status === "revisi"
+                          variant={item.status === "menunggu"
                             ? "outline"
                             : "ghost"}
                           size="icon-xs"

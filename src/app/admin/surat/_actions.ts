@@ -260,34 +260,6 @@ export async function getLetterStatusAction(
   };
 }
 
-// ---------- Request revision ----------
-
-export async function requestRevisionAction(
-  permohonanId: string,
-  catatan: string,
-): Promise<ActionResult> {
-  try {
-    await assertAdmin();
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Akses ditolak" };
-  }
-  if (!catatan.trim()) return { ok: false, error: "Catatan revisi wajib diisi." };
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("permohonan_surat")
-    .update({ status: "revisi", catatan_admin: catatan.trim() })
-    .eq("id", permohonanId)
-    .eq("status", "menunggu")
-    .is("deleted_at", null);
-  if (error) {
-    console.error("[admin/surat] requestRevision failed:", error.message);
-    return { ok: false, error: "Gagal meminta revisi." };
-  }
-  revalidatePath("/admin/surat");
-  return { ok: true };
-}
-
 // ---------- Reject ----------
 
 export async function rejectAction(permohonanId: string, alasan: string): Promise<ActionResult> {
@@ -315,19 +287,17 @@ export async function rejectAction(permohonanId: string, alasan: string): Promis
 
 /**
  * Unified action entry from the redesigned CRUD table. Dispatches to the
- * concrete action based on the selected verdict. Catatan is required for
- * revisi/tolak, optional for setuju.
+ * concrete action based on the selected verdict. Catatan is optional for
+ * setuju, required for tolak. (Status "revisi" removed from the flow — a
+ * reject with a comment tells the citizen what to fix; they submit anew.)
  */
 export async function submitAksiAction(
   permohonanId: string,
-  aksi: "setuju" | "revisi" | "tolak",
+  aksi: "setuju" | "tolak",
   catatan?: string,
 ): Promise<ActionResult> {
   if (aksi === "setuju") {
     return approveAction(permohonanId);
-  }
-  if (aksi === "revisi") {
-    return requestRevisionAction(permohonanId, catatan ?? "");
   }
   return rejectAction(permohonanId, catatan ?? "");
 }

@@ -4,11 +4,13 @@
  *
  * Token mapping:
  *   menunggu   → waiting (biru-grey)
- *   revisi     → revision (gold)
  *   disetujui  → normal (hijau, reuse health normal token per Design §1.3)
  *   ditolak    → rejected (merah-bata)
+ *
+ * Status "revisi" telah dihapus dari alur (admin menolak dgn komentar →
+ * warga membuat pengajuan baru), sehingga tidak ada badge-nya lagi.
  */
-import { Check, Clock, FileEdit, XCircle } from "lucide-react";
+import { Check, Clock, XCircle } from "lucide-react";
 
 import type { StatusPermohonan } from "@/lib/surat/types";
 import { cn } from "@/lib/utils";
@@ -31,11 +33,6 @@ const STATUS_MAP: Record<string, { label: string; Icon: typeof Clock; tone: stri
     label: "Menerbitkan…",
     Icon: Clock,
     tone: "bg-status-waiting-bg text-status-waiting-fg",
-  },
-  revisi: {
-    label: "Perlu Revisi",
-    Icon: FileEdit,
-    tone: "bg-status-revision-bg text-status-revision-fg",
   },
   disetujui: {
     label: "Disetujui",
