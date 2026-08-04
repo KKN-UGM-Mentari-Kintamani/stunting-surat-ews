@@ -18,6 +18,7 @@ interface JenisSurat {
   id: string;
   nama_surat: string;
   kode_klasifikasi: string;
+  template_key: "sktm" | "sku" | "skd";
 }
 
 export default async function LayananSuratPage() {
@@ -31,7 +32,7 @@ export default async function LayananSuratPage() {
   const [profilRes, consentRes, typesRes, kadesRes] = await Promise.all([
     supabase
       .from("warga_profil")
-      .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,agama,pekerjaan,alamat")
+      .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,jenis_kelamin,status,kewarganegaraan,agama,pekerjaan,alamat")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .maybeSingle(),
@@ -42,7 +43,7 @@ export default async function LayananSuratPage() {
       .maybeSingle(),
     supabase
       .from("master_jenis_surat")
-      .select("id,nama_surat,kode_klasifikasi")
+      .select("id,nama_surat,kode_klasifikasi,template_key")
       .eq("is_active", true),
     supabase
       .from("surat_kades_config")

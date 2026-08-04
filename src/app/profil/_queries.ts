@@ -140,7 +140,7 @@ export async function getProfileData(): Promise<ProfileData> {
   // Data warga untuk layanan surat (nullable).
   const { data: wpRow, error: wpErr } = await supabase
     .from("warga_profil")
-    .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,agama,pekerjaan,alamat")
+    .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,jenis_kelamin,status,kewarganegaraan,agama,pekerjaan,alamat")
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();

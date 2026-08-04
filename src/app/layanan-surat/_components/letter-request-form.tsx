@@ -41,6 +41,7 @@ interface JenisSurat {
   id: string;
   nama_surat: string;
   kode_klasifikasi: string;
+  template_key: "sktm" | "sku" | "skd";
 }
 
 interface Props {
@@ -61,6 +62,8 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   const [nik, setNik] = useState(profil.nik);
   const [namaUsaha, setNamaUsaha] = useState("");
   const [jenisUsaha, setJenisUsaha] = useState("");
+  const [sejakTahun, setSejakTahun] = useState("");
+  const [lokasiUsaha, setLokasiUsaha] = useState("");
   // Admin consideration inputs (shown to the verifier).
   const [tujuan, setTujuan] = useState("");
   const [telepon, setTelepon] = useState("");
@@ -69,7 +72,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   const [isPending, start] = useTransition();
 
   const selectedType = jenisSuratList.find((j) => j.id === jenisId);
-  const isSKU = selectedType?.kode_klasifikasi === "474";
+  const isSKU = selectedType?.template_key === "sku";
 
   function handlePreview() {
     if (!jenisId || !nama.trim() || nik.length !== 16) {
@@ -88,13 +91,27 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
       setError("Centang pernyataan tanggung jawab untuk melanjutkan.");
       return;
     }
+    if (
+      isSKU &&
+      (!namaUsaha.trim() || !jenisUsaha.trim() || !sejakTahun.trim() || !lokasiUsaha.trim())
+    ) {
+      setError("Lengkapi nama usaha, jenis usaha, sejak tahun, dan lokasi usaha.");
+      return;
+    }
     setError(null);
     setStep("preview");
   }
 
   function handleSubmit() {
     setError(null);
-    const dataKhusus = isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined;
+    const dataKhusus = isSKU
+      ? {
+          nama_usaha: namaUsaha,
+          jenis_usaha: jenisUsaha,
+          sejak_tahun: sejakTahun,
+          lokasi_usaha: lokasiUsaha,
+        }
+      : undefined;
     const snapshot = buildSnapshot({ ...profil, nama, nik }, {
       dataKhusus,
       tujuanPermohonan: tujuan.trim(),
@@ -115,6 +132,8 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
       setNik(profil.nik);
       setNamaUsaha("");
       setJenisUsaha("");
+      setSejakTahun("");
+      setLokasiUsaha("");
       setTujuan("");
       setTelepon("");
       setPernyataan(false);
@@ -181,6 +200,16 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                     <Input id="f-jenis" value={jenisUsaha} onChange={(e) => setJenisUsaha(e.target.value)}
                       placeholder="Contoh: Dagangan" />
                   </Field>
+                  <Field>
+                    <FieldLabel htmlFor="f-tahun" className={labelClass}>Sejak Tahun <RequiredMark /></FieldLabel>
+                    <Input id="f-tahun" value={sejakTahun} onChange={(e) => setSejakTahun(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      inputMode="numeric" maxLength={4} placeholder="Contoh: 2015" />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="f-lokasi" className={labelClass}>Lokasi Usaha <RequiredMark /></FieldLabel>
+                    <Input id="f-lokasi" value={lokasiUsaha} onChange={(e) => setLokasiUsaha(e.target.value)}
+                      placeholder="Contoh: Dusun Songan, Desa Songan B" />
+                  </Field>
                 </div>
               )}
 
@@ -239,7 +268,11 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                 nik.length !== 16 ||
                 !tujuan.trim() ||
                 !pernyataan ||
-                (isSKU && (!namaUsaha.trim() || !jenisUsaha.trim()))
+                (isSKU &&
+                  (!namaUsaha.trim() ||
+                    !jenisUsaha.trim() ||
+                    !sejakTahun.trim() ||
+                    !lokasiUsaha.trim()))
               }
               className="gap-2"
             >
@@ -253,6 +286,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
           <div className="flex flex-col gap-5">
             <LetterPreview
               namaSurat={selectedType?.nama_surat ?? "—"}
+              templateKey={selectedType?.template_key ?? "sktm"}
               kades={kades}
               snapshot={buildSnapshot({ ...profil, nama, nik }, {
                 dataKhusus: isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined,

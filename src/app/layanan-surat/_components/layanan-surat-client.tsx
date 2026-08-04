@@ -16,6 +16,7 @@ interface JenisSurat {
   id: string;
   nama_surat: string;
   kode_klasifikasi: string;
+  template_key: "sktm" | "sku" | "skd";
 }
 
 interface Props {

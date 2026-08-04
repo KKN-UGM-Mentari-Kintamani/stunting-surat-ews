@@ -100,14 +100,14 @@ export function ApprovalQueue({ items: initialItems }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      {/* <div>
         <h1 className="font-display text-[28px] leading-[1.15] font-semibold md:text-[32px]">
           Antrian Persetujuan
         </h1>
         <p className="mt-2 text-[15px] text-muted-foreground">
           Tinjau &amp; ambil tindakan pada permohonan surat.
         </p>
-      </div>
+      </div> */}
 
       {error && (
         <Alert variant="destructive">

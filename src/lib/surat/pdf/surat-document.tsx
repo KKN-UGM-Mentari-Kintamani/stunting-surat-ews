@@ -1,8 +1,11 @@
 /* src/lib/surat/pdf/surat-document.tsx
  * React-pdf letter template — the FINAL document (PRD §5.1, Design §9).
  * Official letter style: white bg, black text, serif body (Liberation Serif =
- * metric-compatible Times New Roman clone), single gold header line feel via
- * the kop divider. TTE is embedded as base64.
+ * metric-compatible Times New Roman clone). TTE is embedded as base64.
+ *
+ * Mirrors the web preview (letter-preview.tsx) — same kop, parties, dynamic
+ * body (buildSuratBody) — plus nomor surat & TTE/nama Kades.
+ * Village identity is fixed for Desa Songan B (Template_Surat_Desa_SonganB.md).
  *
  * Design §9 deliberately deviates from web tokens for legal documents.
  */
@@ -19,6 +22,7 @@ import {
 import fs from "node:fs";
 import path from "node:path";
 
+import { buildSuratBody, DESA, type TemplateKey } from "@/lib/surat/body";
 import type { IsianSnapshot } from "@/lib/surat/types";
 
 // Fonts live in public/fonts so they're present in the serverless bundle on
@@ -51,26 +55,30 @@ const styles = StyleSheet.create({
     paddingLeft: 50,
     paddingRight: 50,
   },
-  kop: {
-    textAlign: "center",
-    borderBottomWidth: 2,
+  kopWrap: { flexDirection: "row", marginBottom: 8 },
+  kopLogo: { width: 80, height: 80, objectFit: "contain" },
+  kopTeks: { flex: 1, paddingTop: 6 },
+  kopTitle: { fontSize: 14, fontWeight: 700, textAlign: "center", marginBottom: 2 },
+  kopSub: { fontSize: 12, fontWeight: 700, textAlign: "center", marginBottom: 2 },
+  kopWebsite: { fontSize: 9, textAlign: "center", marginTop: 2 },
+  separator: {
+    borderTopWidth: 3,
+    borderBottomWidth: 1,
+    borderTopColor: "#000000",
     borderBottomColor: "#000000",
-    paddingBottom: 8,
     marginBottom: 16,
   },
-  kopTitle: { fontSize: 14, fontWeight: 700, marginBottom: 2 },
-  kopSub: { fontSize: 12, textDecoration: "underline", marginBottom: 2 },
-  kopAlamat: { fontSize: 9 },
   nomorSurat: { textAlign: "center", marginBottom: 18, fontSize: 12 },
   nomorSuratUnderline: { textDecoration: "underline" },
   isi: { fontSize: 12, lineHeight: 1.6 },
-  paragraf: { textAlign: "justify", marginBottom: 12 },
-  tabel: { width: "100%", marginTop: 6, marginBottom: 12 },
+  paragraf: { textAlign: "justify", marginBottom: 10 },
+  paragrafIndent: { textAlign: "justify", marginBottom: 10, textIndent: 24 },
+  tabel: { width: "100%", marginTop: 2, marginBottom: 8 },
   tabelRow: { flexDirection: "row", marginBottom: 4 },
-  tabelK: { width: 140 },
+  tabelK: { width: 160 },
   tabelV: { width: 12 },
   tabelD: { flex: 1 },
-  tanggal: { textAlign: "right", marginTop: 20, fontSize: 11 },
+  tanggal: { textAlign: "right", marginTop: 24, fontSize: 11 },
   ttd: { marginTop: 4, alignItems: "flex-end" },
   ttdTeks: { textAlign: "right" },
   ttdNama: { textAlign: "right", fontWeight: 700, textDecoration: "underline", marginTop: 4 },
@@ -105,6 +113,7 @@ function fmtTanggalHariIni(date: Date): string {
 
 interface Props {
   namaSurat: string;
+  templateKey: TemplateKey;
   snapshot: IsianSnapshot;
   nomorSurat: string;
   kodeVerifikasi: string;
@@ -118,6 +127,7 @@ interface Props {
 
 export function SuratDocument({
   namaSurat,
+  templateKey,
   snapshot,
   nomorSurat,
   kodeVerifikasi,
@@ -128,43 +138,62 @@ export function SuratDocument({
   tanggalTerbit,
 }: Props) {
   const s = snapshot;
-  const jabatan = jabatanKades ?? "Kepala Desa";
+  const jabatan = jabatanKades ?? "Perbekel Desa Songan B";
+  const jk = s.jenis_kelamin === "P" ? "Perempuan" : "Laki-laki";
+  const body = buildSuratBody(templateKey, s);
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Kop surat */}
-        <View style={styles.kop}>
-          <Text style={styles.kopTitle}>PEMERINTAH KABUPATEN KLUNGKUNG</Text>
-          <Text style={styles.kopSub}>KECAMATAN KINTAMANI</Text>
-          <Text style={styles.kopSub}>DESA KINTAMANI</Text>
-          <Text style={styles.kopAlamat}>
-            Jl. Raya Kintamani No. 1, Kintamani, Bangli, Bali
-          </Text>
+        <View style={styles.kopWrap}>
+          <PdfImage src={path.join(process.cwd(), "public", "Logo.png")} style={styles.kopLogo} />
+          <View style={styles.kopTeks}>
+            <Text style={styles.kopTitle}>PEMERINTAH KABUPATEN BANGLI</Text>
+            <Text style={styles.kopSub}>KECAMATAN KINTAMANI</Text>
+            <Text style={styles.kopTitle}>DESA SONGAN B</Text>
+            <Text style={styles.kopWebsite}>Website: {DESA.website}</Text>
+          </View>
         </View>
+        <View style={styles.separator} />
 
-        {/* Nomor surat */}
+        {/* Judul & nomor */}
+        <Text style={styles.nomorSurat}>
+          <Text style={styles.nomorSuratUnderline}>{namaSurat}</Text>
+        </Text>
         <Text style={styles.nomorSurat}>
           Nomor : <Text style={styles.nomorSuratUnderline}>{nomorSurat}</Text>
         </Text>
 
         {/* Isi */}
         <View style={styles.isi}>
-          <Text style={styles.paragraf}>
-            Yang bertanda tangan di bawah ini {jabatan}, menerangkan bahwa:
-          </Text>
-
-          {/* Identitas */}
+          {/* Pihak pertama (penandatangan) */}
+          <Text style={styles.paragraf}>Yang bertanda tangan di bawah ini:</Text>
           <View style={styles.tabel}>
             <View style={styles.tabelRow}>
               <Text style={styles.tabelK}>Nama</Text>
               <Text style={styles.tabelV}>:</Text>
+              <Text style={styles.tabelD}>{namaKades}</Text>
+            </View>
+            <View style={styles.tabelRow}>
+              <Text style={styles.tabelK}>Jabatan</Text>
+              <Text style={styles.tabelV}>:</Text>
+              <Text style={styles.tabelD}>{jabatan}</Text>
+            </View>
+          </View>
+
+          {/* Pihak kedua (pemohon) */}
+          <Text style={styles.paragraf}>Menerangkan dengan sebenarnya kepada:</Text>
+          <View style={styles.tabel}>
+            <View style={styles.tabelRow}>
+              <Text style={styles.tabelK}>Nama Lengkap</Text>
+              <Text style={styles.tabelV}>:</Text>
               <Text style={styles.tabelD}>{s.nama}</Text>
             </View>
             <View style={styles.tabelRow}>
-              <Text style={styles.tabelK}>NIK</Text>
+              <Text style={styles.tabelK}>NIK / No. KK</Text>
               <Text style={styles.tabelV}>:</Text>
-              <Text style={styles.tabelD}>{s.nik}</Text>
+              <Text style={styles.tabelD}>{s.nik}{s.no_kk ? ` / ${s.no_kk}` : ""}</Text>
             </View>
             <View style={styles.tabelRow}>
               <Text style={styles.tabelK}>Tempat / Tgl. Lahir</Text>
@@ -174,50 +203,48 @@ export function SuratDocument({
               </Text>
             </View>
             <View style={styles.tabelRow}>
+              <Text style={styles.tabelK}>Jenis Kelamin</Text>
+              <Text style={styles.tabelV}>:</Text>
+              <Text style={styles.tabelD}>{jk}</Text>
+            </View>
+            <View style={styles.tabelRow}>
               <Text style={styles.tabelK}>Agama</Text>
               <Text style={styles.tabelV}>:</Text>
               <Text style={styles.tabelD}>{s.agama}</Text>
             </View>
+            {s.status && (
+              <View style={styles.tabelRow}>
+                <Text style={styles.tabelK}>Status</Text>
+                <Text style={styles.tabelV}>:</Text>
+                <Text style={styles.tabelD}>{s.status}</Text>
+              </View>
+            )}
             <View style={styles.tabelRow}>
               <Text style={styles.tabelK}>Pekerjaan</Text>
               <Text style={styles.tabelV}>:</Text>
               <Text style={styles.tabelD}>{s.pekerjaan}</Text>
             </View>
             <View style={styles.tabelRow}>
+              <Text style={styles.tabelK}>Kewarganegaraan</Text>
+              <Text style={styles.tabelV}>:</Text>
+              <Text style={styles.tabelD}>{s.kewarganegaraan}</Text>
+            </View>
+            <View style={styles.tabelRow}>
               <Text style={styles.tabelK}>Alamat</Text>
               <Text style={styles.tabelV}>:</Text>
               <Text style={styles.tabelD}>{s.alamat}</Text>
             </View>
-            {s.data_khusus?.nama_usaha && (
-              <View style={styles.tabelRow}>
-                <Text style={styles.tabelK}>Nama Usaha</Text>
-                <Text style={styles.tabelV}>:</Text>
-                <Text style={styles.tabelD}>{s.data_khusus.nama_usaha}</Text>
-              </View>
-            )}
-            {s.data_khusus?.jenis_usaha && (
-              <View style={styles.tabelRow}>
-                <Text style={styles.tabelK}>Jenis Usaha</Text>
-                <Text style={styles.tabelV}>:</Text>
-                <Text style={styles.tabelD}>{s.data_khusus.jenis_usaha}</Text>
-              </View>
-            )}
           </View>
 
-          <Text style={styles.paragraf}>
-            Adalah benar penduduk Desa Kintamani, Kecamatan Kintamani, Kabupaten
-            Klungkung, dan berdasarkan pengamatan serta data yang kami miliki,
-            keterangan yang bersangkutan adalah benar.
-          </Text>
-          <Text style={styles.paragraf}>
-            Demikian surat keterangan ini dibuat untuk dipergunakan sebagaimana
-            mestinya.
-          </Text>
+          {/* Body dinamis per jenis surat */}
+          {body.map((t, i) => (
+            <Text key={i} style={styles.paragrafIndent}>{t}</Text>
+          ))}
         </View>
 
         {/* Tanggal + TTE */}
         <View style={styles.tanggal}>
-          <Text>Kintamani, {fmtTanggalHariIni(tanggalTerbit)}</Text>
+          <Text>{DESA.kota}, {fmtTanggalHariIni(tanggalTerbit)}</Text>
         </View>
         <View style={styles.ttd}>
           <Text style={styles.ttdTeks}>{jabatan},</Text>

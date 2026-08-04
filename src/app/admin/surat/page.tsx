@@ -20,7 +20,7 @@ export interface QueueItem {
   created_at: string;
   updated_at: string | null;
   disetujui_at: string | null;
-  jenis_surat: { nama_surat: string; kode_klasifikasi: string };
+  jenis_surat: { nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd" };
 }
 
 export default async function AdminSuratPage() {
@@ -28,7 +28,7 @@ export default async function AdminSuratPage() {
   const { data, error } = await supabase
     .from("permohonan_surat")
     .select(
-      "id, status, catatan_admin, nomor_surat_final, kode_verifikasi, pdf_final_url, data_isian_snapshot, created_at, updated_at, disetujui_at, jenis_surat:master_jenis_surat(nama_surat, kode_klasifikasi)",
+      "id, status, catatan_admin, nomor_surat_final, kode_verifikasi, pdf_final_url, data_isian_snapshot, created_at, updated_at, disetujui_at, jenis_surat:master_jenis_surat(nama_surat, kode_klasifikasi, template_key)",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
@@ -50,7 +50,7 @@ export default async function AdminSuratPage() {
     created_at: string;
     updated_at: string | null;
     disetujui_at: string | null;
-    jenis_surat: { nama_surat: string; kode_klasifikasi: string }[] | { nama_surat: string; kode_klasifikasi: string } | null;
+    jenis_surat: { nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd" }[] | { nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd" } | null;
   }>).map((r) => {
     const jenis = Array.isArray(r.jenis_surat)
       ? r.jenis_surat[0]
@@ -66,7 +66,7 @@ export default async function AdminSuratPage() {
       created_at: r.created_at,
       updated_at: r.updated_at,
       disetujui_at: r.disetujui_at,
-      jenis_surat: jenis ?? { nama_surat: "—", kode_klasifikasi: "—" },
+      jenis_surat: jenis ?? { nama_surat: "—", kode_klasifikasi: "—", template_key: "sktm" },
     };
   });
 

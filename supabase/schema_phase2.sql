@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS public.warga_profil (
   nama            text NOT NULL CHECK (char_length(trim(nama)) > 0),
   tempat_lahir    text NOT NULL,
   tanggal_lahir   date NOT NULL CHECK (tanggal_lahir <= current_date),
+  jenis_kelamin   char(1) NOT NULL DEFAULT 'L' CHECK (jenis_kelamin IN ('L','P')),
+  status          text,
+  kewarganegaraan text NOT NULL DEFAULT 'WNI',
   agama           text NOT NULL,
   pekerjaan       text NOT NULL,
   alamat          text NOT NULL,
@@ -24,6 +27,14 @@ CREATE TABLE IF NOT EXISTS public.warga_profil (
   updated_at      timestamptz NOT NULL DEFAULT now(),
   deleted_at      timestamptz NULL
 );
+-- Idempotent migration for DBs created before the 3 new columns.
+ALTER TABLE public.warga_profil
+  ADD COLUMN IF NOT EXISTS jenis_kelamin char(1) NOT NULL DEFAULT 'L'
+    CHECK (jenis_kelamin IN ('L','P'));
+ALTER TABLE public.warga_profil
+  ADD COLUMN IF NOT EXISTS status text;
+ALTER TABLE public.warga_profil
+  ADD COLUMN IF NOT EXISTS kewarganegaraan text NOT NULL DEFAULT 'WNI';
 CREATE INDEX IF NOT EXISTS idx_warga_profil_nik ON public.warga_profil(nik);
 
 DROP TRIGGER IF EXISTS trg_warga_profil_updated_at ON public.warga_profil;
@@ -47,18 +58,38 @@ CREATE TABLE IF NOT EXISTS public.master_jenis_surat (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   nama_surat        text NOT NULL CHECK (char_length(trim(nama_surat)) > 0),
   kode_klasifikasi  text NOT NULL,
+  -- Which body template renders this letter ('sktm' | 'sku' | 'skd').
+  template_key      text NOT NULL DEFAULT 'sktm'
+                    CHECK (template_key IN ('sktm','sku','skd')),
   is_active         boolean NOT NULL DEFAULT true,
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_master_jenis_surat_active ON public.master_jenis_surat(is_active);
 
+-- Backfill template_key on existing rows (idempotent migration).
+UPDATE public.master_jenis_surat SET template_key = 'sktm'
+  WHERE template_key IS NULL
+    AND (nama_surat ILIKE '%tidak mampu%' OR nama_surat ILIKE '%sktm%');
+UPDATE public.master_jenis_surat SET template_key = 'sku'
+  WHERE template_key IS NULL
+    AND (nama_surat ILIKE '%usaha%' OR nama_surat ILIKE '%sku%');
+UPDATE public.master_jenis_surat SET template_key = 'skd'
+  WHERE template_key IS NULL
+    AND (nama_surat ILIKE '%domisili%' OR nama_surat ILIKE '%skd%');
+
+-- Rename the domisili type to match the template set (SKD).
+UPDATE public.master_jenis_surat
+  SET nama_surat = 'Surat Keterangan Domisili (SKD)'
+  WHERE nama_surat = 'Surat Pengantar Domisili'
+    AND is_active = true;
+
 -- Seed the 3 MVP letter types (idempotent).
-INSERT INTO public.master_jenis_surat (nama_surat, kode_klasifikasi, is_active)
+INSERT INTO public.master_jenis_surat (nama_surat, kode_klasifikasi, template_key, is_active)
 SELECT * FROM (VALUES
-  ('Surat Keterangan Tidak Mampu (SKTM)', '470', true),
-  ('Surat Keterangan Usaha (SKU)',        '474', true),
-  ('Surat Pengantar Domisili',             '470', true)
-) AS seed(nama, kode, aktif)
+  ('Surat Keterangan Tidak Mampu (SKTM)', '470', 'sktm', true),
+  ('Surat Keterangan Usaha (SKU)',        '474', 'sku',  true),
+  ('Surat Keterangan Domisili (SKD)',     '470', 'skd',  true)
+) AS seed(nama, kode, templ, aktif)
 WHERE NOT EXISTS (SELECT 1 FROM public.master_jenis_surat);
 
 -- ---------- nomor_surat_counter (race-safe numbering per kode/tahun) ----------

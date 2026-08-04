@@ -128,6 +128,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
             <div className="min-h-0 flex-1 overflow-y-auto">
               <LetterPreview
                 namaSurat={item.jenis_surat.nama_surat}
+                templateKey={item.jenis_surat.template_key}
                 snapshot={snapshot}
               />
             </div>

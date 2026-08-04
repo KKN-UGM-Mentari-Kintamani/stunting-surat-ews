@@ -121,19 +121,20 @@ async function renderAndApprove(
     // 1. Load permohonan + jenis surat + snapshot.
     const { data: perm, error: permErr } = await supabase
       .from("permohonan_surat")
-      .select("data_isian_snapshot, jenis_surat:master_jenis_surat(kode_klasifikasi, nama_surat)")
+      .select("data_isian_snapshot, jenis_surat:master_jenis_surat(kode_klasifikasi, nama_surat, template_key)")
       .eq("id", permohonanId)
       .is("deleted_at", null)
       .maybeSingle();
     if (permErr || !perm) return { ok: false, error: "Permohonan tidak ditemukan." };
 
     const jenis = (perm.jenis_surat as unknown as
-      | { kode_klasifikasi: string; nama_surat: string }[]
-      | { kode_klasifikasi: string; nama_surat: string }
-      | null) as { kode_klasifikasi: string; nama_surat: string } | { kode_klasifikasi: string; nama_surat: string }[] | null;
+      | { kode_klasifikasi: string; nama_surat: string; template_key: string }[]
+      | { kode_klasifikasi: string; nama_surat: string; template_key: string }
+      | null) as { kode_klasifikasi: string; nama_surat: string; template_key: string } | { kode_klasifikasi: string; nama_surat: string; template_key: string }[] | null;
     const jenisObj = Array.isArray(jenis) ? jenis[0] : jenis;
     const kode = jenisObj?.kode_klasifikasi;
     const namaSurat = jenisObj?.nama_surat ?? "Surat Keterangan";
+    const templateKey = (jenisObj?.template_key ?? "sktm") as "sktm" | "sku" | "skd";
     if (!kode) return { ok: false, error: "Jenis surat tidak ditemukan." };
 
     // 2. Kades config (nama, NIP, jabatan, TTE path).
@@ -174,10 +175,11 @@ async function renderAndApprove(
     const { renderSuratPdf } = await import("@/lib/surat/pdf/surat-document");
     const pdfBuffer = await renderSuratPdf({
       namaSurat,
+      templateKey,
       snapshot: perm.data_isian_snapshot as never,
       nomorSurat,
       kodeVerifikasi,
-      namaKades: config?.nama_kades ?? "Kepala Desa",
+      namaKades: config?.nama_kades ?? "Perbekel Desa Songan B",
       nipKades: config?.nip_kades,
       jabatanKades: config?.jabatan,
       tteBase64,

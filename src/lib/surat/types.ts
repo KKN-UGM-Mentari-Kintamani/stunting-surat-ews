@@ -17,6 +17,9 @@ export interface WargaProfilData {
   nama: string;
   tempat_lahir: string;
   tanggal_lahir: string;
+  jenis_kelamin: 'L' | 'P';
+  status?: string;
+  kewarganegaraan: string;
   agama: string;
   pekerjaan: string;
   alamat: string;

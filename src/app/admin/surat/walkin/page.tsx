@@ -6,13 +6,13 @@ import { WalkInForm } from "@/app/admin/surat/_components/walk-in-form";
 
 export const metadata = { title: "Buat Surat Walk-In" };
 
-interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; }
+interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd"; }
 
 export default async function WalkInPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("master_jenis_surat")
-    .select("id,nama_surat,kode_klasifikasi")
+    .select("id,nama_surat,kode_klasifikasi,template_key")
     .eq("is_active", true);
   const { data: kadesData } = await supabase
     .from("surat_kades_config")

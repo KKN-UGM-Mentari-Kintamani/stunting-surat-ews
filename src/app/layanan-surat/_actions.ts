@@ -42,6 +42,9 @@ export async function saveWargaProfilAction(
       nama: data.nama.trim(),
       tempat_lahir: data.tempat_lahir.trim(),
       tanggal_lahir: data.tanggal_lahir,
+      jenis_kelamin: data.jenis_kelamin === "P" ? "P" : "L",
+      status: data.status?.trim() || null,
+      kewarganegaraan: data.kewarganegaraan.trim() || "WNI",
       agama: data.agama.trim(),
       pekerjaan: data.pekerjaan.trim(),
       alamat: data.alamat.trim(),
@@ -68,7 +71,7 @@ export async function getWargaProfilAction(): Promise<ActionResult<WargaProfilDa
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("warga_profil")
-    .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,agama,pekerjaan,alamat")
+    .select("nik,no_kk,nama,tempat_lahir,tanggal_lahir,jenis_kelamin,status,kewarganegaraan,agama,pekerjaan,alamat")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .maybeSingle();

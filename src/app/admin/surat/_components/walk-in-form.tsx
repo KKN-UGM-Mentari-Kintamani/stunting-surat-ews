@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; }
+interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd"; }
 const labelClass = "text-[15px] font-medium leading-snug";
 
 type Step = "form" | "preview";
@@ -37,6 +37,9 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
   const [nik, setNik] = useState("");
   const [tempatLahir, setTempatLahir] = useState("");
   const [tglLahir, setTglLahir] = useState("");
+  const [jenisKelamin, setJenisKelamin] = useState<"L" | "P">("L");
+  const [status, setStatus] = useState("");
+  const [kewarganegaraan, setKewarganegaraan] = useState("WNI");
   const [agama, setAgama] = useState("");
   const [pekerjaan, setPekerjaan] = useState("");
   const [alamat, setAlamat] = useState("");
@@ -48,9 +51,11 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
   const [previewSnapshot, setPreviewSnapshot] = useState<IsianSnapshot | null>(null);
 
   const selectedType = jenisSuratList.find((j) => j.id === jenisId);
-  const isSKU = selectedType?.kode_klasifikasi === "474";
+  const isSKU = selectedType?.template_key === "sku";
   const [namaUsaha, setNamaUsaha] = useState("");
   const [jenisUsaha, setJenisUsaha] = useState("");
+  const [sejakTahun, setSejakTahun] = useState("");
+  const [lokasiUsaha, setLokasiUsaha] = useState("");
 
   function resetForm() {
     setJenisId("");
@@ -58,6 +63,9 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
     setNik("");
     setTempatLahir("");
     setTglLahir("");
+    setJenisKelamin("L");
+    setStatus("");
+    setKewarganegaraan("WNI");
     setAgama("");
     setPekerjaan("");
     setAlamat("");
@@ -66,6 +74,8 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
     setTelepon("");
     setNamaUsaha("");
     setJenisUsaha("");
+    setSejakTahun("");
+    setLokasiUsaha("");
     setPreviewSnapshot(null);
     setStep("form");
   }
@@ -85,8 +95,17 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
       setError("Nomor telepon tidak valid (8–16 digit).");
       return;
     }
-    const profil = { ...emptyProfil(), nama, nik, no_kk: noKk, tempat_lahir: tempatLahir, tanggal_lahir: tglLahir, agama, pekerjaan, alamat };
-    const dataKhusus = isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined;
+    if (
+      isSKU &&
+      (!namaUsaha.trim() || !jenisUsaha.trim() || !sejakTahun.trim() || !lokasiUsaha.trim())
+    ) {
+      setError("Lengkapi nama usaha, jenis usaha, sejak tahun, dan lokasi usaha.");
+      return;
+    }
+    const profil = { ...emptyProfil(), nama, nik, no_kk: noKk, tempat_lahir: tempatLahir, tanggal_lahir: tglLahir, jenis_kelamin: jenisKelamin, status, kewarganegaraan, agama, pekerjaan, alamat };
+    const dataKhusus = isSKU
+      ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha, sejak_tahun: sejakTahun, lokasi_usaha: lokasiUsaha }
+      : undefined;
     const snapshot = buildSnapshot(profil, {
       dataKhusus,
       tujuanPermohonan: tujuan.trim(),
@@ -125,6 +144,7 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
           <div className="flex flex-col gap-4">
             <LetterPreview
               namaSurat={selectedType?.nama_surat ?? "Surat"}
+              templateKey={selectedType?.template_key ?? "sktm"}
               snapshot={previewSnapshot}
               kades={kades}
             />
@@ -168,6 +188,29 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Field><FieldLabel className={labelClass}>Tanggal Lahir</FieldLabel>
                   <Input type="date" value={tglLahir} onChange={(e) => setTglLahir(e.target.value)} max={new Date().toISOString().slice(0, 10)} /></Field>
+                <Field><FieldLabel className={labelClass}>Jenis Kelamin</FieldLabel>
+                  <Select value={jenisKelamin} onValueChange={(v) => setJenisKelamin(v as "L" | "P")}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                    <SelectContent><SelectGroup>
+                      <SelectItem value="L">Laki-laki</SelectItem>
+                      <SelectItem value="P">Perempuan</SelectItem>
+                    </SelectGroup></SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <Field><FieldLabel className={labelClass}>Status Perkawinan</FieldLabel>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Pilih (opsional)" /></SelectTrigger>
+                    <SelectContent><SelectGroup>
+                      {["Belum Kawin","Kawin","Cerai Hidup","Cerai Mati"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectGroup></SelectContent>
+                  </Select>
+                </Field>
+                <Field><FieldLabel className={labelClass}>Kewarganegaraan</FieldLabel>
+                  <Input value={kewarganegaraan} onChange={(e) => setKewarganegaraan(e.target.value)} placeholder="WNI" /></Field>
+              </div>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Field><FieldLabel className={labelClass}>Agama</FieldLabel>
                   <Select value={agama} onValueChange={setAgama}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Pilih" /></SelectTrigger>
@@ -189,6 +232,10 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
                     <Input value={namaUsaha} onChange={(e) => setNamaUsaha(e.target.value)} /></Field>
                   <Field><FieldLabel className={labelClass}>Jenis Usaha</FieldLabel>
                     <Input value={jenisUsaha} onChange={(e) => setJenisUsaha(e.target.value)} /></Field>
+                  <Field><FieldLabel className={labelClass}>Sejak Tahun</FieldLabel>
+                    <Input value={sejakTahun} onChange={(e) => setSejakTahun(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} /></Field>
+                  <Field><FieldLabel className={labelClass}>Lokasi Usaha</FieldLabel>
+                    <Input value={lokasiUsaha} onChange={(e) => setLokasiUsaha(e.target.value)} /></Field>
                 </div>
               )}
 
@@ -206,10 +253,20 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
               </div>
             </FieldGroup>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            {/* Required logic mirrors goToPreview: jenis, nama, NIK, tujuan. */}
+            {/* Required logic mirrors goToPreview: jenis, nama, NIK, tujuan; + SKU fields. */}
             <Button
               type="submit"
-              disabled={!jenisId || !nama.trim() || nik.length !== 16 || !tujuan.trim()}
+              disabled={
+                !jenisId ||
+                !nama.trim() ||
+                nik.length !== 16 ||
+                !tujuan.trim() ||
+                (isSKU &&
+                  (!namaUsaha.trim() ||
+                    !jenisUsaha.trim() ||
+                    !sejakTahun.trim() ||
+                    !lokasiUsaha.trim()))
+              }
               className="gap-1.5 w-fit"
             >
               Lihat Pratinjau

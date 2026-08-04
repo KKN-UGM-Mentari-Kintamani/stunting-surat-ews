@@ -35,12 +35,17 @@ const agamaOptions = [
   "Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu",
 ];
 
+const statusOptions = ["Belum Kawin", "Kawin", "Cerai Hidup", "Cerai Mati"];
+
 const profilSchema = z.object({
   nik: z.string().regex(/^[0-9]{16}$/, "NIK harus 16 digit angka."),
   no_kk: z.string().regex(/^[0-9]{16}$/, "No. KK harus 16 digit angka."),
   nama: z.string().min(2, "Nama minimal 2 karakter."),
   tempat_lahir: z.string().min(2, "Tempat lahir wajib."),
   tanggal_lahir: z.string().min(1, "Tanggal lahir wajib."),
+  jenis_kelamin: z.enum(["L", "P"], "Jenis kelamin wajib."),
+  status: z.string(),
+  kewarganegaraan: z.string().min(1, "Kewarganegaraan wajib."),
   agama: z.string().min(1, "Agama wajib."),
   pekerjaan: z.string().min(2, "Pekerjaan wajib."),
   alamat: z.string().min(5, "Alamat wajib."),
@@ -69,6 +74,9 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
       nama: initial?.nama ?? "",
       tempat_lahir: initial?.tempat_lahir ?? "",
       tanggal_lahir: initial?.tanggal_lahir ?? "",
+      jenis_kelamin: initial?.jenis_kelamin ?? "L",
+      status: initial?.status ?? "",
+      kewarganegaraan: initial?.kewarganegaraan ?? "WNI",
       agama: initial?.agama ?? "",
       pekerjaan: initial?.pekerjaan ?? "",
       alamat: initial?.alamat ?? "",
@@ -76,6 +84,8 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
   });
 
   const agama = watch("agama");
+  const jenisKelamin = watch("jenis_kelamin");
+  const status = watch("status");
 
   function onSubmit(values: ProfilForm) {
     setError(null);
@@ -150,6 +160,47 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
                   max={new Date().toISOString().slice(0, 10)}
                   aria-invalid={!!errors.tanggal_lahir} {...register("tanggal_lahir")} />
                 {errors.tanggal_lahir && <FieldError errors={[errors.tanggal_lahir]} />}
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="jenis_kelamin" className={labelClass}>Jenis Kelamin <RequiredMark /></FieldLabel>
+                <Select value={jenisKelamin} onValueChange={(v) => setValue("jenis_kelamin", v as "L" | "P", { shouldValidate: true })}>
+                  <SelectTrigger id="jenis_kelamin" className="w-full">
+                    <SelectValue placeholder="Pilih jenis kelamin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="L">Laki-laki</SelectItem>
+                      <SelectItem value="P">Perempuan</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="status" className={labelClass}>Status Perkawinan</FieldLabel>
+                <Select value={status} onValueChange={(v) => setValue("status", v, { shouldValidate: true })}>
+                  <SelectTrigger id="status" className="w-full">
+                    <SelectValue placeholder="Pilih status (opsional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {statusOptions.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field data-invalid={!!errors.kewarganegaraan}>
+                <FieldLabel htmlFor="kewarganegaraan" className={labelClass}>Kewarganegaraan <RequiredMark /></FieldLabel>
+                <Input id="kewarganegaraan" placeholder="Contoh: WNI"
+                  aria-invalid={!!errors.kewarganegaraan} {...register("kewarganegaraan")} />
+                {errors.kewarganegaraan && <FieldError errors={[errors.kewarganegaraan]} />}
               </Field>
             </div>
 
