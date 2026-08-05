@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Referensi template surat (dokumen kerja, bukan aset aplikasi)
+/skd.pdf
+/sktm.pdf
+/sku.pdf
+/Template_Surat_Desa_SonganB.md

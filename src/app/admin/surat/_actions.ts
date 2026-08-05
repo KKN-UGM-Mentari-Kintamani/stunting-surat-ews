@@ -430,6 +430,10 @@ export async function uploadTteAction(
   if (!file.type.startsWith("image/")) {
     return { ok: false, error: "File harus berupa gambar." };
   }
+  // Cap upload size server-side (client compresses, but never trust the client).
+  if (file.size > 2 * 1024 * 1024) {
+    return { ok: false, error: "Ukuran gambar maksimal 2MB." };
+  }
 
   const path = `tte-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const supabase = createServiceClient();
