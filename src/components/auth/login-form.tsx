@@ -70,7 +70,7 @@ export function LoginForm({
   next?: string;
   hasError: boolean;
 }) {
-  const [mode, setMode] = useState<Mode>("google");
+  const [mode, setMode] = useState<Mode>("password");
   const [consent, setConsent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
