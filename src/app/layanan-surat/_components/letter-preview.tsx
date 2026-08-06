@@ -112,9 +112,9 @@ export function LetterPreview({
         <p className="mt-2.5 indent-8 text-justify">{layout.isiPenutup}</p>
       )}
 
-      {/* Tanda tangan — blok di kanan bawah, teks rata kiri */}
+      {/* Tanda tangan — blok di kanan bawah, teks rata kiri, lebar mengikuti isi */}
       <div className="mt-6 flex justify-end">
-        <div className="w-[180px] text-left">
+        <div className="text-left">
           <p className="leading-none">{DESA.kota}, {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
           <p className="mt-1 leading-none">{jabatan},</p>
           <p className="mt-1 font-bold underline leading-none">{namaKades}</p>

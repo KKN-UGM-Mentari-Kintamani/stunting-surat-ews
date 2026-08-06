@@ -112,7 +112,8 @@ const styles = StyleSheet.create({
   blokStatisDot: { flex: 1, borderBottomWidth: 1, borderBottomStyle: "dotted", marginBottom: 1, marginLeft: 2, marginRight: 2 },
   // TTD: blok di kanan bawah, teks di dalamnya rata kiri (sisakan 1 baris kosong)
   ttdWrap: { marginTop: 18, alignItems: "flex-end" },
-  ttdBlok: { width: 180, alignItems: "flex-start" },
+  // Tanpa lebar tetap: blok menyesuaikan isi → menempel ke margin kanan
+  ttdBlok: { alignItems: "flex-start" },
   tanggal: { fontSize: 12, lineHeight: 1, textAlign: "left" },
   ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 2 },
   ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2 },
