@@ -527,10 +527,16 @@ export async function updateKadesConfigAction(input: {
  * Upload Kades signature (tte) or stamp (stempel) to the PRIVATE 'surat-ttd'
  * bucket. Returns the storage path (stored in surat_kades_config.ttd_cap_url /
  * stempel_url). Compression is done client-side (browser-image-compression).
+ *
+ * Storage hygiene: when a replacement is uploaded, the PREVIOUS file
+ * (`oldPath`, the one currently referenced by the config) is deleted right
+ * after the new upload succeeds — so the bucket never accumulates stale
+ * TTE/stempel images. The currently-used file is never removed.
  */
 export async function uploadAsetTtdAction(
   jenis: "tte" | "stempel",
   formData: FormData,
+  oldPath?: string | null,
 ): Promise<{ ok: false; error: string } | { ok: true; path: string }> {
   try {
     await assertAdmin();
@@ -560,6 +566,20 @@ export async function uploadAsetTtdAction(
     console.error(`[admin/surat] uploadAsetTtd(${jenis}) failed:`, error.message);
     return { ok: false, error: "Gagal mengunggah gambar." };
   }
+
+  // Delete the replaced file now that the new one is safely stored.
+  const oldTrimmed = oldPath?.trim();
+  if (oldTrimmed && oldTrimmed !== path) {
+    const { error: delErr } = await supabase.storage
+      .from("surat-ttd")
+      .remove([oldTrimmed]);
+    if (delErr) {
+      // Storage hygiene is best-effort: never fail an otherwise-successful
+      // upload because cleanup failed — just log it.
+      console.error(`[admin/surat] cleanup old ${jenis} failed:`, delErr.message);
+    }
+  }
+
   return { ok: true, path };
 }
 

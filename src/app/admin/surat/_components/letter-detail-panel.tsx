@@ -9,6 +9,7 @@
  */
 import { useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { submitAksiAction } from "@/app/admin/surat/_actions";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
@@ -103,6 +104,9 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone, kade
     setError(null);
     submittingRef.current = true;
     setIsSubmitting(true);
+    const toastId = aksi === "setuju"
+      ? toast.loading("Menerbitkan surat…", { description: "Membuat PDF final, mohon tunggu." })
+      : toast.loading("Memproses permohonan…");
     start(async () => {
       try {
         const res = await submitAksiAction(
@@ -114,7 +118,17 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone, kade
         );
         if (!res.ok) {
           setError(res.error);
+          toast.dismiss(toastId);
+          toast.error(aksi === "setuju" ? "Gagal menyetujui." : "Gagal menolak.", { description: res.error });
           return;
+        }
+        toast.dismiss(toastId);
+        if (aksi === "setuju") {
+          toast.success("Surat disetujui & diterbitkan.", {
+            description: `Nomor: ${nomorSurat.trim()}`,
+          });
+        } else {
+          toast.success("Permohonan ditolak.", { description: "Pemohon dapat melihat alasan penolakan." });
         }
         onActionDone(
           item.id,

@@ -50,6 +50,10 @@ Font.register({
   ],
 });
 
+// Jangan memenggal kata dengan tanda hubung: kata yang tidak muat dibawa utuh
+// ke baris berikutnya (mis. "Kabupaten Bangli", bukan "Kabupaten Ban-gli").
+Font.registerHyphenationCallback((word) => [word]);
+
 // Kop logos: react-pdf resolves string src via url.parse, which mangles
 // Windows absolute paths (treats "D:\..." as a remote URL → fetch fails, logo
 // missing). Embed as base64 data-URIs instead — the same pattern that already
@@ -119,9 +123,9 @@ const styles = StyleSheet.create({
   ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2 },
   ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 1 },
   ttdImage: { width: 84, height: 50, objectFit: "contain", marginTop: 1 },
-  // Stempel menimpa tanda tangan via marginTop negatif (absolute react-pdf
-  // tetap menambah tinggi layout, jadi hindari position absolute).
-  stempelImage: { width: 48, height: 48, objectFit: "contain", marginTop: -42, marginLeft: 18 },
+  // Stempel lebih besar, menimpa tanda tangan serta jabatan/nama di bawahnya
+  // (marginTop negatif; absolute react-pdf tetap menambah tinggi layout).
+  stempelImage: { width: 72, height: 72, objectFit: "contain", marginTop: -72, marginLeft: 0 },
   kodeVerifikasi: {
     // Paling bawah halaman, terlepas dari tinggi isi.
     position: "absolute",

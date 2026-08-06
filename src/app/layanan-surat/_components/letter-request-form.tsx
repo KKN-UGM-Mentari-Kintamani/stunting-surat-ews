@@ -6,6 +6,7 @@
  */
 import { useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, FileText, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { submitPermohonanAction } from "@/app/layanan-surat/_actions";
 import type { KadesConfig, TemplateKey, WargaProfilData } from "@/lib/surat/types";
@@ -121,9 +122,13 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
         const res = await submitPermohonanAction(jenisId, snapshot);
         if (!res.ok) {
           setError(res.error);
+          toast.error("Gagal mengajukan surat.", { description: res.error });
           setStep("form");
           return;
         }
+        toast.success("Surat berhasil diajukan.", {
+          description: "Tunggu verifikasi perangkat desa.",
+        });
         onSubmitted();
         setStep("form");
         setJenisId("");

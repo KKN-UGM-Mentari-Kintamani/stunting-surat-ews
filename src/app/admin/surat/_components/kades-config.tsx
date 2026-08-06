@@ -7,6 +7,7 @@
 import { useState, useTransition } from "react";
 import imageCompression from "browser-image-compression";
 import { Loader2, Save, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 import { updateKadesConfigAction, uploadAsetTtdAction } from "@/app/admin/surat/_actions";
 import { Button } from "@/components/ui/button";
@@ -47,10 +48,14 @@ export function KadesConfig({ initialConfig }: { initialConfig: Config | null })
       });
       const fd = new FormData();
       fd.append("file", compressed, compressed.name);
-      const res = await uploadAsetTtdAction(jenis, fd);
+      const oldPath = jenis === "stempel" ? stempelPath : ttePath;
+      const res = await uploadAsetTtdAction(jenis, fd, oldPath);
       if (!res.ok) { setError(res.error); return; }
       if (jenis === "stempel") setStempelPath(res.path);
       else setTtePath(res.path);
+      toast.success(jenis === "stempel" ? "Stempel diunggah." : "Tanda tangan diunggah.", {
+        description: "File lama otomatis dihapus. Simpan untuk menerapkan.",
+      });
     } catch (err) {
       setError("Gagal mengompresi gambar.");
     } finally {
@@ -71,8 +76,15 @@ export function KadesConfig({ initialConfig }: { initialConfig: Config | null })
         ttdCapUrl: ttePath,
         stempelUrl: stempelPath,
       });
-      if (!res.ok) { setError(res.error); return; }
+      if (!res.ok) {
+        setError(res.error);
+        toast.error("Gagal menyimpan konfigurasi.", { description: res.error });
+        return;
+      }
       setSaved(true);
+      toast.success("Konfigurasi tersimpan.", {
+        description: "Identitas, tanda tangan & stempel diperbarui.",
+      });
     });
   }
 
