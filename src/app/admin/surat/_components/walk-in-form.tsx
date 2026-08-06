@@ -49,6 +49,7 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
   const [previewSnapshot, setPreviewSnapshot] = useState<IsianSnapshot | null>(null);
+  const [nomorSurat, setNomorSurat] = useState("");
 
   const selectedType = jenisSuratList.find((j) => j.id === jenisId);
   const isSKU = selectedType?.template_key === "sku";
@@ -76,6 +77,7 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
     setJenisUsaha("");
     setSejakTahun("");
     setLokasiUsaha("");
+    setNomorSurat("");
     setPreviewSnapshot(null);
     setStep("form");
   }
@@ -118,9 +120,13 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
 
   function confirmAndPublish() {
     if (!jenisId || !previewSnapshot) return;
+    if (!nomorSurat.trim()) {
+      setError("Nomor surat wajib diisi.");
+      return;
+    }
     setError(null);
     start(async () => {
-      const res = await createWalkInAction(jenisId, previewSnapshot);
+      const res = await createWalkInAction(jenisId, previewSnapshot, nomorSurat);
       if (!res.ok) { setError(res.error); return; }
       toast.success("Surat walk-in berhasil diterbitkan.", {
         description: "Surat langsung disetujui. Lihat di halaman antrian.",
@@ -147,7 +153,19 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
               templateKey={selectedType?.template_key ?? "sktm"}
               snapshot={previewSnapshot}
               kades={kades}
+              nomorSurat={nomorSurat}
             />
+            <div className="flex flex-col gap-1">
+              <label htmlFor="nomor-surat" className="text-[15px] font-medium leading-snug">
+                Nomor Surat <RequiredMark />
+              </label>
+              <Input
+                id="nomor-surat"
+                value={nomorSurat}
+                onChange={(e) => setNomorSurat(e.target.value)}
+                placeholder="Contoh: 470/012/VII/2026"
+              />
+            </div>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
             <div className="flex items-center gap-2">
               <Button variant="outline" className="gap-1.5" onClick={() => setStep("form")} disabled={isPending}>

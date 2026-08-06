@@ -16,6 +16,8 @@ interface Props {
   templateKey: TemplateKey;
   snapshot: IsianSnapshot;
   kades?: KadesConfig | null;
+  /** Optional manually-entered number (shown by the admin walk-in preview). */
+  nomorSurat?: string;
 }
 
 function fmtTgl(v?: string): string {
@@ -26,7 +28,7 @@ function fmtTgl(v?: string): string {
     : d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 }
 
-export function LetterPreview({ namaSurat, templateKey, snapshot, kades }: Props) {
+export function LetterPreview({ namaSurat, templateKey, snapshot, kades, nomorSurat }: Props) {
   const s = snapshot;
   const jabatan = kades?.jabatan || "Perbekel Desa Songan B";
   const namaKades = kades?.nama_kades || "Perbekel Desa Songan B";
@@ -57,7 +59,9 @@ export function LetterPreview({ namaSurat, templateKey, snapshot, kades }: Props
 
       {/* Judul & nomor */}
       <p className="mt-5 text-center font-semibold underline">{namaSurat}</p>
-      <p className="mt-1 text-center">Nomor: <span className="underline">—</span></p>
+      <p className="mt-1 text-center">
+        Nomor: <span className="underline">{nomorSurat?.trim() ? nomorSurat.trim() : "—"}</span>
+      </p>
 
       {/* Pihak pertama (penandatangan) */}
       <p className="mt-5">Yang bertanda tangan di bawah ini:</p>

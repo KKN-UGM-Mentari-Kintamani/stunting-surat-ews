@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { formatNomorSurat, generateKodeVerifikasi } from "@/lib/surat/nomor";
+import { generateKodeVerifikasi, validateNomorSurat } from "@/lib/surat/nomor";
 import type { IsianSnapshot } from "@/lib/surat/types";
 
 export type ActionResult<T = void> =
@@ -68,17 +68,24 @@ export async function getApprovalQueueAction(
 }
 
 /**
- * Approve: mark processing_at, then fire the VPS worker (HTTP push). The UI
- * polls getLetterStatus until the worker finishes (status changes) or the
- * processing_at goes stale. Returns immediately — PDF render is async.
+ * Approve: mark processing_at, then render + upload the final PDF and set
+ * status=disetujui. The letter number is entered MANUALLY by the village
+ * staff (no auto-increment counter). Returns immediately — PDF render is
+ * synchronous in-process (react-pdf).
  */
-export async function approveAction(permohonanId: string): Promise<ActionResult> {
+export async function approveAction(
+  permohonanId: string,
+  nomorSurat: string,
+): Promise<ActionResult> {
   let adminId: string;
   try {
     adminId = await assertAdmin();
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Akses ditolak" };
   }
+  const nomor = nomorSurat.trim();
+  const validNomor = validateNomorSurat(nomor);
+  if (validNomor) return { ok: false, error: validNomor };
 
   const supabase = await createClient();
   // Guard: only 'menunggu' can be approved (prevents double-approve while rendering).
@@ -96,8 +103,8 @@ export async function approveAction(permohonanId: string): Promise<ActionResult>
 
   // Render the final PDF via react-pdf (in-process, serverless-friendly) and
   // upload it, then mark disetujui. Any failure clears processing_at so the
-  // admin can retry (PRD §4.4 transactional integrity — nomor not consumed).
-  const result = await renderAndApprove(permohonanId, supabase);
+  // admin can retry (PRD §4.4 transactional integrity).
+  const result = await renderAndApprove(permohonanId, nomor, supabase);
   if (!result.ok) {
     await supabase
       .from("permohonan_surat")
@@ -110,11 +117,12 @@ export async function approveAction(permohonanId: string): Promise<ActionResult>
 
 /**
  * Renders the approved letter to PDF (react-pdf), uploads to the private
- * `surat-pdf` bucket, generates nomor + kode verifikasi, and marks the letter
- * as disetujui. Runs entirely on Vercel — no VPS / Puppeteer worker.
+ * `surat-pdf` bucket, sets the manually-entered nomor + auto kode verifikasi,
+ * and marks the letter as disetujui. Runs entirely on Vercel — no VPS.
  */
 async function renderAndApprove(
   permohonanId: string,
+  nomorSurat: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<ActionResult> {
   try {
@@ -159,16 +167,9 @@ async function renderAndApprove(
       }
     }
 
-    // 4. Generate nomor + kode (counter upsert; race risk ≈ 0 at this scale).
+    // 4. Kode verifikasi is auto-generated; nomor surat came from the admin.
     const tahun = new Date().getFullYear();
-    const { data: counter } = await supabase
-      .from("nomor_surat_counter")
-      .select("nomor_urut")
-      .eq("kode_klasifikasi", kode)
-      .eq("tahun", tahun)
-      .maybeSingle();
-    const nextUrut = ((counter?.nomor_urut as number | undefined) ?? 0) + 1;
-    const nomorSurat = formatNomorSurat(kode, nextUrut);
+    const nomor = nomorSurat.trim();
     const kodeVerifikasi = generateKodeVerifikasi();
 
     // 5. Render PDF (react-pdf).
@@ -177,7 +178,7 @@ async function renderAndApprove(
       namaSurat,
       templateKey,
       snapshot: perm.data_isian_snapshot as never,
-      nomorSurat,
+      nomorSurat: nomor,
       kodeVerifikasi,
       namaKades: config?.nama_kades ?? "Perbekel Desa Songan B",
       nipKades: config?.nip_kades,
@@ -186,7 +187,7 @@ async function renderAndApprove(
     });
 
     // 6. Upload to private bucket.
-    const pdfPath = `${tahun}/${kode}/${nomorSurat.replace(/\//g, "-")}.pdf`;
+    const pdfPath = `${tahun}/${kode}/${nomor.replace(/\//g, "-")}.pdf`;
     const service = createServiceClient();
     const { error: upErr } = await service.storage
       .from("surat-pdf")
@@ -206,16 +207,12 @@ async function renderAndApprove(
       return { ok: false, error: `Gagal mengunggah PDF: ${upErr.message}` };
     }
 
-    // 7. Update counter + mark disetujui (atomically as best-effort).
-    await supabase.from("nomor_surat_counter").upsert(
-      { kode_klasifikasi: kode, tahun, nomor_urut: nextUrut },
-      { onConflict: "kode_klasifikasi,tahun" },
-    );
+    // 7. Mark disetujui with the manually-entered nomor.
     const { error: updErr } = await supabase
       .from("permohonan_surat")
       .update({
         status: "disetujui",
-        nomor_surat_final: nomorSurat,
+        nomor_surat_final: nomor,
         kode_verifikasi: kodeVerifikasi,
         pdf_final_url: pdfPath,
         disetujui_at: new Date().toISOString(),
@@ -224,6 +221,10 @@ async function renderAndApprove(
       .eq("id", permohonanId);
     if (updErr) {
       console.error("[admin/surat] final update failed:", updErr.message);
+      // Unique violation on nomor_surat_final → number already taken.
+      if (updErr.code === "23505") {
+        return { ok: false, error: "Nomor surat sudah dipakai. Gunakan nomor lain." };
+      }
       return { ok: false, error: `Gagal menyetujui: ${updErr.message}` };
     }
   } catch (err) {
@@ -297,9 +298,10 @@ export async function submitAksiAction(
   permohonanId: string,
   aksi: "setuju" | "tolak",
   catatan?: string,
+  nomorSurat?: string,
 ): Promise<ActionResult> {
   if (aksi === "setuju") {
-    return approveAction(permohonanId);
+    return approveAction(permohonanId, nomorSurat ?? "");
   }
   return rejectAction(permohonanId, catatan ?? "");
 }
@@ -309,11 +311,12 @@ export async function submitAksiAction(
 /**
  * Walk-in: admin serves the citizen at the counter, so the letter is
  * AUTO-APPROVED immediately — inserted then rendered/approved via the same
- * pipeline as the online queue (nomor + kode + PDF + status=disetujui).
+ * pipeline as the online queue (manual nomor + kode + PDF + status=disetujui).
  */
 export async function createWalkInAction(
   jenisSuratId: string,
   snapshot: IsianSnapshot,
+  nomorSurat: string,
 ): Promise<ActionResult<{ id: string; nomorSurat: string | null; pdfUrl: string | null }>> {
   let adminId: string;
   try {
@@ -321,6 +324,10 @@ export async function createWalkInAction(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Akses ditolak" };
   }
+  const nomor = nomorSurat.trim();
+  const validNomor = validateNomorSurat(nomor);
+  if (validNomor) return { ok: false, error: validNomor };
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("permohonan_surat")
@@ -339,13 +346,13 @@ export async function createWalkInAction(
   }
 
   // Auto-approve (walk-in = verified at the counter).
-  const approved = await renderAndApprove(data.id, supabase);
+  const approved = await renderAndApprove(data.id, nomor, supabase);
   if (!approved.ok) {
     return { ok: false, error: approved.error };
   }
 
   revalidatePath("/admin/surat");
-  return { ok: true, data: { id: data.id, nomorSurat: null, pdfUrl: null } };
+  return { ok: true, data: { id: data.id, nomorSurat: nomor, pdfUrl: null } };
 }
 
 // ---------- Kades config ----------

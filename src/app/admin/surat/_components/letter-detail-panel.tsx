@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Aksi = "setuju" | "tolak";
@@ -68,18 +70,23 @@ function getSnap(s: Record<string, unknown>, key: string): string {
 export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Props) {
   const [aksi, setAksi] = useState<Aksi | null>(null);
   const [catatan, setCatatan] = useState("");
+  const [nomorSurat, setNomorSurat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
   const s = item.data_isian_snapshot;
   const snapshot = s as unknown as IsianSnapshot;
   const catatanWajib = aksi === "tolak";
-  const canSubmit = !!aksi && (!catatanWajib || catatan.trim().length > 0);
+  const canSubmit =
+    !!aksi &&
+    (!catatanWajib || catatan.trim().length > 0) &&
+    (aksi !== "setuju" || nomorSurat.trim().length > 0);
   const sudahDiAksi = item.status !== "menunggu";
 
   function reset() {
     setAksi(null);
     setCatatan("");
+    setNomorSurat("");
     setError(null);
   }
 
@@ -87,7 +94,12 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
     if (!aksi) return;
     setError(null);
     start(async () => {
-      const res = await submitAksiAction(item.id, aksi, catatan.trim() || undefined);
+      const res = await submitAksiAction(
+        item.id,
+        aksi,
+        catatan.trim() || undefined,
+        aksi === "setuju" ? nomorSurat.trim() : undefined,
+      );
       if (!res.ok) {
         setError(res.error);
         return;
@@ -208,6 +220,19 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                     </SelectGroup>
                     </SelectContent>
                   </Select>
+                  {aksi === "setuju" && (
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor="nomor-surat" className="text-[13px] font-medium leading-snug">
+                        Nomor Surat <RequiredMark />
+                      </label>
+                      <Input
+                        id="nomor-surat"
+                        value={nomorSurat}
+                        onChange={(e) => setNomorSurat(e.target.value)}
+                        placeholder="Contoh: 470/012/VII/2026"
+                      />
+                    </div>
+                  )}
                   <Textarea
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
