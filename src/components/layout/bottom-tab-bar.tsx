@@ -21,6 +21,8 @@ export function BottomTabBar() {
   const pathname = usePathname();
   // Admin/cadre dashboards manage their own chrome — hide citizen nav there.
   if (pathname.startsWith("/admin")) return null;
+  // Auth pages stay clean — no chrome on /login & /reset-password.
+  if (pathname === "/login" || pathname === "/reset-password") return null;
   const items = NAV_ITEMS.filter((i) => i.enabled);
 
   return (

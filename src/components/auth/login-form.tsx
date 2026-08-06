@@ -1,9 +1,11 @@
 "use client";
 
 /* src/components/auth/login-form.tsx
- * Client side of /login: two sign-in modes — Google OAuth (gated behind explicit
- * PDP consent, PRD §4.4) and Email + Password (for users who set a password on
- * their account). Consent only applies to the Google (sign-up) flow.
+ * Client side of /login. One unified form:
+ *   - Email + Kata Sandi fields + tombol "Masuk".
+ *   - Di bawahnya tombol "Masuk dengan Google". Saat ditekan, jika pengguna
+ *     belum pernah menyetujui (perangkat ini), muncul dialog persetujuan singkat
+ *     (PDP Law §4.4) sebelum mengalihkan ke Google.
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -36,6 +38,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const CONSENT_KEY = "portal-consent-v1";
+
 function GoogleMark() {
   return (
     <svg viewBox="0 0 24 24" className="size-5" aria-hidden data-icon="inline-start">
@@ -59,8 +63,6 @@ function GoogleMark() {
   );
 }
 
-type Mode = "google" | "password";
-
 const labelClass = "text-[15px] font-medium leading-snug";
 
 export function LoginForm({
@@ -70,22 +72,16 @@ export function LoginForm({
   next?: string;
   hasError: boolean;
 }) {
-  const [mode, setMode] = useState<Mode>("password");
-  const [consent, setConsent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [googlePending, setGooglePending] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotPending, setForgotPending] = useState(false);
-
-  function handleSignIn() {
-    setError(null);
-    startTransition(async () => {
-      await signInWithGoogleAction(next);
-    });
-  }
 
   function handlePasswordSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +93,28 @@ export function LoginForm({
     startTransition(async () => {
       const res = await signInWithPasswordAction(email, password, next);
       if (!res.ok) setError(res.error);
+    });
+  }
+
+  function handleGoogleClick() {
+    setError(null);
+    // Only gate consent when this device hasn't agreed before (new user path).
+    if (typeof window !== "undefined" && !window.localStorage.getItem(CONSENT_KEY)) {
+      setConsent(false);
+      setConsentOpen(true);
+      return;
+    }
+    proceedWithGoogle();
+  }
+
+  function proceedWithGoogle() {
+    setConsentOpen(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CONSENT_KEY, "1");
+    }
+    setGooglePending(true);
+    startTransition(async () => {
+      await signInWithGoogleAction(next);
     });
   }
 
@@ -148,117 +166,71 @@ export function LoginForm({
           </Alert>
         )}
 
-        {/* Mode toggle */}
-        <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1 text-[14px] font-medium">
-          <button
-            type="button"
-            onClick={() => { setMode("google"); setError(null); }}
-            className={`rounded-sm px-3 py-1.5 transition-colors ${
-              mode === "google"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Akun Google
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode("password"); setError(null); }}
-            className={`rounded-sm px-3 py-1.5 transition-colors ${
-              mode === "password"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Email &amp; Kata Sandi
-          </button>
-        </div>
-
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        {mode === "google" ? (
-          <>
-            {/* PDP Law consent (PRD §4.4) — explicit opt-in, never pre-checked. */}
-            <Field orientation="horizontal" className="items-start">
-              <Checkbox
-                id="consent"
-                checked={consent}
-                onCheckedChange={(v) => setConsent(v === true)}
-                aria-describedby="consent-desc"
-                className="mt-1"
-              />
-              <div className="flex flex-col gap-1">
-                <label htmlFor="consent" className="text-[15px] font-medium leading-snug">
-                  Saya menyetujui pengumpulan &amp; penggunaan data
-                </label>
-                <FieldDescription id="consent-desc" className="text-[13px] leading-relaxed">
-                  Data yang dikumpulkan: data anak (nama, tanggal lahir, hasil
-                  pengukuran) dan — pada layanan surat — NIK/KK. Data dipakai untuk
-                  pemantauan tumbuh kembang dan administrasi desa, tidak dibagikan
-                  ke pihak lain. Anda dapat meminta penghapusan data melalui
-                  perangkat desa.
-                </FieldDescription>
-              </div>
-            </Field>
-
-            <Button
+        <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="login-email" className={labelClass}>
+              Email
+            </FieldLabel>
+            <Input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nama@contoh.com"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="login-password" className={labelClass}>
+              Kata Sandi
+            </FieldLabel>
+            <Input
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Masukkan kata sandi"
+            />
+          </Field>
+          <div className="text-right">
+            <button
               type="button"
-              size="lg"
-              className="w-full gap-2"
-              disabled={!consent || isPending}
-              onClick={handleSignIn}
+              onClick={() => setForgotOpen(true)}
+              className="text-[13px] font-medium text-secondary underline-offset-4 hover:underline"
             >
-              <GoogleMark />
-              {isPending ? "Mengalihkan ke Google…" : "Masuk dengan Google"}
-            </Button>
-          </>
-        ) : (
-          <form onSubmit={handlePasswordSignIn} className="flex flex-col gap-4">
-            <Field>
-              <FieldLabel htmlFor="login-email" className={labelClass}>
-                Email
-              </FieldLabel>
-              <Input
-                id="login-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="nama@contoh.com"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="login-password" className={labelClass}>
-                Kata Sandi
-              </FieldLabel>
-              <Input
-                id="login-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan kata sandi"
-              />
-            </Field>
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={() => setForgotOpen(true)}
-                className="text-[13px] font-medium text-secondary underline-offset-4 hover:underline"
-              >
-                Lupa kata sandi?
-              </button>
-            </div>
-            <Button type="submit" size="lg" className="w-full gap-2" disabled={!canSubmitPassword}>
-              <KeyRound className="size-4" strokeWidth={1.5} aria-hidden />
-              {isPending ? "Memeriksa…" : "Masuk"}
-            </Button>
-          </form>
-        )}
+              Lupa kata sandi?
+            </button>
+          </div>
+          <Button type="submit" size="lg" className="w-full gap-2" disabled={!canSubmitPassword}>
+            <KeyRound className="size-4" strokeWidth={1.5} aria-hidden />
+            {isPending ? "Memeriksa…" : "Masuk"}
+          </Button>
+        </form>
+
+        <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
+          <span className="h-px flex-1 bg-border" aria-hidden />
+          atau
+          <span className="h-px flex-1 bg-border" aria-hidden />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full gap-2"
+          disabled={googlePending || isPending}
+          onClick={handleGoogleClick}
+        >
+          <GoogleMark />
+          {googlePending ? "Mengalihkan ke Google…" : "Masuk dengan Google"}
+        </Button>
 
         <p className="text-center text-[13px] text-muted-foreground">
           Tanpa akun?{" "}
@@ -268,6 +240,47 @@ export function LoginForm({
           — kalkulator stunting dapat dipakai tanpa masuk.
         </p>
       </CardContent>
+
+      {/* Consent dialog (new-user / sign-up path via Google) */}
+      <Dialog open={consentOpen} onOpenChange={setConsentOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="size-5" strokeWidth={1.5} aria-hidden />
+              Persetujuan Data
+            </DialogTitle>
+            <DialogDescription>
+              Sebelum masuk dengan Google, kami mohon persetujuan Anda.
+            </DialogDescription>
+          </DialogHeader>
+          <Field orientation="horizontal" className="items-start">
+            <Checkbox
+              id="consent"
+              checked={consent}
+              onCheckedChange={(v) => setConsent(v === true)}
+              className="mt-1"
+            />
+            <div className="flex flex-col gap-1">
+              <label htmlFor="consent" className="text-[15px] font-medium leading-snug">
+                Saya menyetujui pengumpulan &amp; penggunaan data
+              </label>
+              <FieldDescription className="text-[13px] leading-relaxed">
+                Data Anda dipakai untuk pemantauan tumbuh kembang anak dan
+                administrasi desa, tidak dibagikan ke pihak lain, dan dapat
+                diminta dihapus melalui perangkat desa.
+              </FieldDescription>
+            </div>
+          </Field>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConsentOpen(false)}>
+              Batal
+            </Button>
+            <Button disabled={!consent} onClick={proceedWithGoogle}>
+              Lanjut ke Google
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Forgot password dialog */}
       <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>

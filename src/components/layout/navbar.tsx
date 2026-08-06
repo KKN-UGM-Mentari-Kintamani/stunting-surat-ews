@@ -49,6 +49,8 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
   const pathname = usePathname();
   // Admin/cadre dashboards manage their own chrome — hide the citizen navbar there.
   if (pathname.startsWith("/admin")) return null;
+  // Auth pages stay clean — no navbar on /login & /reset-password.
+  if (pathname === "/login" || pathname === "/reset-password") return null;
   // Right-group main menu (authOnly items — Profil Saya — only live in the dropdown).
   const menuItems = NAV_ITEMS.filter((i) => i.enabled && !i.authOnly);
 
