@@ -34,6 +34,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          // Toast warna sesuai aksi — pastel selaras token desa (Design §1.3).
+          "--success-bg": "var(--color-status-normal-bg)",
+          "--success-border": "var(--color-status-normal-fg)",
+          "--success-text": "var(--color-status-normal-fg)",
+          "--error-bg": "var(--color-status-rejected-bg)",
+          "--error-border": "var(--color-status-rejected-fg)",
+          "--error-text": "var(--color-status-rejected-fg)",
+          "--warning-bg": "var(--color-status-revision-bg)",
+          "--warning-border": "var(--color-status-revision-fg)",
+          "--warning-text": "var(--color-status-revision-fg)",
         } as React.CSSProperties
       }
       toastOptions={{

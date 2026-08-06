@@ -49,7 +49,7 @@ export default function RootLayout({
         <TooltipProvider>
           <AppShell>{children}</AppShell>
         </TooltipProvider>
-        <Toaster position="top-center" richColors={false} />
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );
