@@ -7,7 +7,7 @@
  *           catatan, submit/cancel). Catatan optional for setuju, required for
  *           revisi/tolak.
  */
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
 import { submitAksiAction } from "@/app/admin/surat/_actions";
@@ -73,6 +73,8 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
   const [nomorSurat, setNomorSurat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const s = item.data_isian_snapshot;
   const snapshot = s as unknown as IsianSnapshot;
@@ -91,25 +93,32 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
   }
 
   function handleSubmit() {
-    if (!aksi) return;
+    if (!aksi || isSubmitting || submittingRef.current) return;
     setError(null);
+    submittingRef.current = true;
+    setIsSubmitting(true);
     start(async () => {
-      const res = await submitAksiAction(
-        item.id,
-        aksi,
-        catatan.trim() || undefined,
-        aksi === "setuju" ? nomorSurat.trim() : undefined,
-      );
-      if (!res.ok) {
-        setError(res.error);
-        return;
+      try {
+        const res = await submitAksiAction(
+          item.id,
+          aksi,
+          catatan.trim() || undefined,
+          aksi === "setuju" ? nomorSurat.trim() : undefined,
+        );
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        onActionDone(
+          item.id,
+          aksi === "setuju" ? "disetujui" : "ditolak",
+        );
+        onOpenChange(false);
+        reset();
+      } finally {
+        submittingRef.current = false;
+        setIsSubmitting(false);
       }
-      onActionDone(
-        item.id,
-        aksi === "setuju" ? "disetujui" : "ditolak",
-      );
-      onOpenChange(false);
-      reset();
     });
   }
 
@@ -264,7 +273,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
             <Button variant="ghost" onClick={() => { onOpenChange(false); reset(); }} disabled={isPending}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={!canSubmit || isPending} className="gap-2">
+            <Button onClick={handleSubmit} disabled={!canSubmit || isPending || isSubmitting} className="gap-2">
               {isPending && <Loader2 className="animate-spin" aria-hidden />}
               Submit
             </Button>

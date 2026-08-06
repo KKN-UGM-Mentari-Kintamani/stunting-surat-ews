@@ -4,7 +4,7 @@
  * Smart form (PRD §4.1): select letter type → autofill from profil → editable
  * (family feature) → service-specific fields → preview → submit.
  */
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, FileText, Loader2 } from "lucide-react";
 
 import { submitPermohonanAction } from "@/app/layanan-surat/_actions";
@@ -70,6 +70,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   const [pernyataan, setPernyataan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
+  const submittingRef = useRef(false);
 
   const selectedType = jenisSuratList.find((j) => j.id === jenisId);
   const isSKU = selectedType?.template_key === "sku";
@@ -103,7 +104,9 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   }
 
   function handleSubmit() {
+    if (submittingRef.current) return; // guard double-submit
     setError(null);
+    submittingRef.current = true;
     const dataKhusus = isSKU
       ? {
           nama_usaha: namaUsaha,
@@ -119,24 +122,28 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
       pernyataanBenar: pernyataan,
     });
     start(async () => {
-      const res = await submitPermohonanAction(jenisId, snapshot);
-      if (!res.ok) {
-        setError(res.error);
+      try {
+        const res = await submitPermohonanAction(jenisId, snapshot);
+        if (!res.ok) {
+          setError(res.error);
+          setStep("form");
+          return;
+        }
+        onSubmitted();
         setStep("form");
-        return;
+        setJenisId("");
+        setNama(profil.nama);
+        setNik(profil.nik);
+        setNamaUsaha("");
+        setJenisUsaha("");
+        setSejakTahun("");
+        setLokasiUsaha("");
+        setTujuan("");
+        setTelepon("");
+        setPernyataan(false);
+      } finally {
+        submittingRef.current = false;
       }
-      onSubmitted();
-      setStep("form");
-      setJenisId("");
-      setNama(profil.nama);
-      setNik(profil.nik);
-      setNamaUsaha("");
-      setJenisUsaha("");
-      setSejakTahun("");
-      setLokasiUsaha("");
-      setTujuan("");
-      setTelepon("");
-      setPernyataan(false);
     });
   }
 

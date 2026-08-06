@@ -8,7 +8,7 @@
  * confirms it and points to the queue; the form resets so the admin can serve
  * the next citizen right away.
  */
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +48,8 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
   const [telepon, setTelepon] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [previewSnapshot, setPreviewSnapshot] = useState<IsianSnapshot | null>(null);
   const [nomorSurat, setNomorSurat] = useState("");
 
@@ -124,14 +126,22 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
       setError("Nomor surat wajib diisi.");
       return;
     }
+    if (isSubmitting) return; // guard double-submit
+    submittingRef.current = true;
     setError(null);
+    setIsSubmitting(true);
     start(async () => {
-      const res = await createWalkInAction(jenisId, previewSnapshot, nomorSurat);
-      if (!res.ok) { setError(res.error); return; }
-      toast.success("Surat walk-in berhasil diterbitkan.", {
-        description: "Surat langsung disetujui. Lihat di halaman antrian.",
-      });
-      resetForm();
+      try {
+        const res = await createWalkInAction(jenisId, previewSnapshot, nomorSurat);
+        if (!res.ok) { setError(res.error); return; }
+        toast.success("Surat walk-in berhasil diterbitkan.", {
+          description: "Surat langsung disetujui. Lihat di halaman antrian.",
+        });
+        resetForm();
+      } finally {
+        submittingRef.current = false;
+        setIsSubmitting(false);
+      }
     });
   }
 
@@ -172,7 +182,7 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
                 <ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden />
                 Kembali Edit
               </Button>
-              <Button onClick={confirmAndPublish} disabled={isPending} className="gap-1.5">
+              <Button onClick={confirmAndPublish} disabled={isPending || isSubmitting} className="gap-1.5">
                 {isPending && <Loader2 className="animate-spin" aria-hidden />}
                 Buat & Terbitkan
                 <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden />

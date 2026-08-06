@@ -345,9 +345,14 @@ export async function createWalkInAction(
     return { ok: false, error: "Gagal membuat surat walk-in." };
   }
 
-  // Auto-approve (walk-in = verified at the counter).
+  // Auto-approve (walk-in = verified at the counter). On failure, roll back the
+  // just-inserted row so no orphaned 'menunggu' request lingers in the queue.
   const approved = await renderAndApprove(data.id, nomor, supabase);
   if (!approved.ok) {
+    await supabase
+      .from("permohonan_surat")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", data.id);
     return { ok: false, error: approved.error };
   }
 
