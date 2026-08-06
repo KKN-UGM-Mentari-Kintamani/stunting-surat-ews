@@ -37,12 +37,31 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="border-t border-border bg-muted/30">
+    <footer className="border-t border-border bg-primary/10">
       <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 gap-10 px-5 py-12 md:grid-cols-[1.4fr_1fr_1fr] md:px-8">
         {/* Kiri: brand + deskripsi + tim KKN */}
         <div className="flex flex-col gap-4">
           <BrandLogo size="md" />
-          <div className="flex items-center gap-3">
+          <p className="max-w-sm text-[14px] leading-relaxed text-muted-foreground">
+            Sigap Desa — layanan administrasi, pemantauan tumbuh kembang anak, dan
+            edukasi gizi untuk Desa Songan B, Kecamatan Kintamani, Kabupaten Bangli.
+          </p>
+          {/* Logo KKN + text, lalu 2 logo kop surat di samping kanan */}
+          <div className="flex flex-wrap items-center gap-3">
+            <Image
+              src="/Logo-Menkin.svg"
+              alt="Logo KKN Mentari Kintamani"
+              width={44}
+              height={44}
+              className="rounded object-contain"
+            />
+            <Image
+              src="/Text-Logo-Menkin.svg"
+              alt="KKN Mentari Kintamani"
+              width={120}
+              height={44}
+              className="h-auto object-contain"
+            />
             <Image
               src="/kop-logo-kiri.png"
               alt="Logo Kiri"
@@ -58,31 +77,6 @@ export function SiteFooter() {
               className="rounded object-contain"
             />
           </div>
-          <p className="max-w-sm text-[14px] leading-relaxed text-muted-foreground">
-            Sigap Desa — layanan administrasi, pemantauan tumbuh kembang anak, dan
-            edukasi gizi untuk Desa Songan B, Kecamatan Kintamani, Kabupaten Bangli.
-          </p>
-          <div className="mt-2 flex flex-col gap-1.5">
-            <Image
-              src="/Logo-Menkin.svg"
-              alt="Logo KKN Mentari Kintamani"
-              width={48}
-              height={48}
-              className="rounded object-contain"
-            />
-            <Image
-              src="/Text-Logo-Menkin.svg"
-              alt="KKN Mentari Kintamani"
-              width={140}
-              height={48}
-              className="h-auto object-contain"
-            />
-          </div>
-          <p className="text-[13px] leading-relaxed text-muted-foreground">
-            © 2026 KKN-PPM UGM Mentari Kintamani. All rights reserved.
-            <br />
-            Designed &amp; Developed by Tim KKN.
-          </p>
         </div>
 
         {/* Tengah: quick links */}
@@ -124,6 +118,15 @@ export function SiteFooter() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Copyright — di tengah, melintasi seluruh footer */}
+      <div className="border-t border-border/70 px-5 py-5">
+        <p className="text-center text-[13px] leading-relaxed text-muted-foreground">
+          © 2026 KKN-PPM UGM Mentari Kintamani. All rights reserved.
+          <br />
+          Designed &amp; Developed by Tim KKN.
+        </p>
       </div>
     </footer>
   );
