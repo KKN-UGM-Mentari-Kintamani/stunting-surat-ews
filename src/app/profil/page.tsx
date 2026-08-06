@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 
 import { AutoOpenAddChild } from "@/app/profil/_components/auto-open-add-child";
 import { WargaProfileCard } from "@/app/profil/_components/warga-profile-card";
+import { AccountSecurity } from "@/components/auth/account-security";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { ChildrenSection } from "@/app/profil/_components/children-section";
@@ -74,6 +75,7 @@ async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
               </Button>
             </div>
           )}
+          <AccountSecurity email={data.user.email} />
           <ProfileTabs>
             <>
               <AutoOpenAddChild autoOpen={autoAddNew} />

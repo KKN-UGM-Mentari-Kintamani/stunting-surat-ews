@@ -5,6 +5,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import type { KadesConfig, TemplateKey } from "@/lib/surat/types";
+import { AccountSecurity } from "@/components/auth/account-security";
 import { ApprovalQueue } from "@/app/admin/surat/_components/approval-queue";
 import { QueueStats } from "@/app/admin/surat/_components/queue-stats";
 
@@ -91,10 +92,15 @@ export default async function AdminSuratPage() {
       new Date(i.disetujui_at).toDateString() === todayKey,
   ).length;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="flex flex-col gap-6 py-10 md:py-14">
       <QueueStats total={total} approvedToday={approvedToday} waiting={waiting} />
       <ApprovalQueue items={items as unknown as QueueItem[]} kades={kades} />
+      <AccountSecurity email={user?.email ?? null} />
     </div>
   );
 }

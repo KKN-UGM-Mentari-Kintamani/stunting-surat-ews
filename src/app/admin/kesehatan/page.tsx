@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { AccountSecurity } from "@/components/auth/account-security";
 import { AGE_BUCKET_LABEL, type AgeBucket } from "@/lib/calc/lms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,10 @@ export default async function AdminKesehatanPage() {
   const articles = (data ?? []) as ArticleRow[];
   const published = articles.filter((a) => a.published);
   const drafts = articles.filter((a) => !a.published);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <div className="flex flex-col gap-8 py-10 md:py-14">
@@ -212,6 +217,9 @@ export default async function AdminKesehatanPage() {
           </div>
         )}
       </div>
+
+      {/* Keamanan Akun */}
+      <AccountSecurity email={user?.email ?? null} />
     </div>
   );
 }
