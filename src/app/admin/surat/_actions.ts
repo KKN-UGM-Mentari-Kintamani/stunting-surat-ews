@@ -185,6 +185,16 @@ async function renderAndUploadPdf(
     if (upErr) {
       console.error("[admin/surat] PDF upload failed:", upErr.message, upErr.statusCode ?? "");
       const msg = (upErr.message ?? "").toLowerCase();
+      // Duplicate upload (same nomor → same path). Supabase says "already exists"
+      // or returns 409; check BEFORE the bucket check because the bucket message
+      // also contains "resource" ("The resource was not found").
+      if (
+        upErr.statusCode === "409" ||
+        msg.includes("already exists") ||
+        msg.includes("duplicate")
+      ) {
+        return { ok: false, error: "Nomor surat sudah dipakai. Gunakan nomor lain." };
+      }
       if (msg.includes("jwt") || msg.includes("jws") || msg.includes("unauthorized") || msg.includes("apikey")) {
         return { ok: false, error: "Gagal mengunggah PDF: kredensial server tidak valid. Periksa SUPABASE_SERVICE_ROLE_KEY." };
       }
