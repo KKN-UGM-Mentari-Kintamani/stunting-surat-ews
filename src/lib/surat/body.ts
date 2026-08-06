@@ -50,8 +50,6 @@ export interface SuratLayout {
   blokStatis?: AgunanBaris[];
   /** Closing paragraph rendered AFTER the static block (e.g. SKU penutup). */
   isiPenutup?: string;
-  /** Optional role line above the jabatan in the TTD block ("Yang membuat pernyataan"). */
-  ttdRoleLine?: string;
 }
 
 /** Options that can override snapshot-derived text without mutating it. */
@@ -81,6 +79,18 @@ function tahunDari(v?: string): string {
 
 function row(label: string, value?: string | null): { label: string; value: string } {
   return { label, value: value?.trim() ? value.trim() : "—" };
+}
+
+const SUFFIX_ALAMAT = "Desa Songan B, Kecamatan Kintamani, Kabupaten Bangli";
+
+/** Kelengkapan alamat otomatis: warga cukup isi nama Banjar ("Br. Dalem"),
+ *  surat menampilkan alamat lengkap. Data lama yang sudah lengkap dibiarkan
+ *  (anti-dobel). */
+export function formatAlamat(v?: string | null): string {
+  const t = v?.trim() ?? "";
+  if (!t) return t;
+  if (/Desa Songan|Kintamani|Kabupaten Bangli/i.test(t)) return t;
+  return `${t.replace(/,\s*$/, "")}, ${SUFFIX_ALAMAT}`;
 }
 
 const PENUTUP_BAKU =
@@ -122,7 +132,7 @@ export function buildSuratLayout(
           row("Tempat/Tahun lahir", ttlTahun),
           row("Agama", s.agama),
           row("Pekerjaan", s.pekerjaan),
-          row("Alamat", s.alamat),
+          row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
           `Memang benar orang tersebut di atas Meninggal Dunia Pada tahun ${k.tahun_meninggal ?? "—"} di ${k.tempat_meninggal ?? "—"} di sebabkan karena ${k.sebab_meninggal ?? "—"}.`,
@@ -141,7 +151,7 @@ export function buildSuratLayout(
           row("NIK", s.nik),
           row("Agama", s.agama),
           row("Pekerjaan", s.pekerjaan),
-          row("Alamat", s.alamat),
+          row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
           `Memang benar orang tersebut di atas lahir di ${s.tempat_lahir || "—"} pada tanggal ${fmtTgl(s.tanggal_lahir)} dari ${k.nama_ayah ?? "—"} Sebagai Ayah dan ${k.nama_ibu ?? "—"} Sebagai Ibu.`,
@@ -159,7 +169,7 @@ export function buildSuratLayout(
           row("Tempat/Tgl.lahir", ttl),
           row("Agama", s.agama),
           row("Pekerjaan", s.pekerjaan),
-          row("Alamat", s.alamat),
+          row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
           `Memang benar orang tersebut di atas lahir dari seorang Ibu yang bernama ${k.nama_ibu ?? "—"}.`,
@@ -177,7 +187,7 @@ export function buildSuratLayout(
           row("Tempat/tgl.lahir", ttl),
           row("Agama", s.agama),
           row("Pekerjaan", s.pekerjaan),
-          row("Alamat Asal", s.alamat),
+          row("Alamat Asal", formatAlamat(s.alamat)),
           row("Alamat Tujuan Pindah", k.alamat_tujuan_pindah),
           row("Alasan Pindah", k.alasan_pindah),
           row("Jenis Kepindahan", k.jenis_kepindahan),
@@ -196,7 +206,7 @@ export function buildSuratLayout(
           row("Tempat/Tanggal Lahir", ttl),
           row("Pekerjaan", s.pekerjaan),
           row("Agama", s.agama),
-          row("Alamat", s.alamat),
+          row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
           `Memang benar orang tersebut di atas memiliki ${k.jenis_usaha ?? "—"} yang terletak di ${k.lokasi_usaha ?? "—"} dan masih memerlukan bantuan modal dari Bank BRI usaha tersebut di atas dengan agunan sebagai berikut :`,
@@ -216,7 +226,7 @@ export function buildSuratLayout(
           row("Jenis Kelamin", JK(s.jenis_kelamin)),
           row("Agama", s.agama),
           row("Pekerjaan", s.pekerjaan),
-          row("Alamat", s.alamat),
+          row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
           `Memang benar orang tersebut di atas benar-benar penduduk yang berdomisili di ${DESA.nama} ${DESA.kecamatan} ${DESA.kabupaten} ${DESA.provinsi} dan terdaftar dalam register kependudukan Kami dengan NIK ${s.nik}.`,
@@ -232,19 +242,18 @@ export function buildSuratLayout(
       const tujuan = opts.tujuanSktm?.trim() || k.tujuan_sktm?.trim() || s.tujuan_permohonan?.trim() || "untuk kepentingan yang sah";
       return {
         introPenandatangan: "Saya yang bertanda tangan di bawah ini :",
-        introPemohon: "Menyatakan bahwa nama-nama sbb :",
+        introPemohon: "Dengan ini menerangkan bahwa :",
         identitasPemohon: [
           row("Nama", s.nama),
           row("No KK", s.no_kk),
           row("NIK", s.nik),
-          row("Alamat", s.alamat),
+          row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
           `Berdasarkan surat pernyataan dari Kepala Keluarga dan hasil verifikasi dan validasi lapangan memang benar masuk kategori keluarga tidak mampu, dan ${tujuan}.`,
           "Apabila di kemudian hari terdapat ketidaksesuaian atau pelanggaran terhadap surat pernyataan ini, kami bersedia menerima konsekuensi sesuai ketentuan yang berlaku.",
           "Demikian surat pernyataan ini dibuat dengan sesungguhnya untuk dapat digunakan seperlunya.",
         ],
-        ttdRoleLine: "Yang membuat pernyataan",
       };
     }
   }

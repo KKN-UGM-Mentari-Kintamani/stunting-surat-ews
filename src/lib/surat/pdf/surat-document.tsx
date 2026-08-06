@@ -66,61 +66,62 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Liberation Serif",
     fontSize: 12,
-    lineHeight: 1.15,
+    lineHeight: 1.5,
     color: "#000000",
     backgroundColor: "#ffffff",
-    // kiri 3.5cm, atas/kanan/bawah 2.5cm
+    // kiri 3.5cm, atas 2.5cm, kanan 2.5cm, bawah ~2.1cm agar SKU muat 1 halaman
     paddingTop: 71,
-    paddingBottom: 71,
+    paddingBottom: 60,
     paddingLeft: 99,
     paddingRight: 71,
   },
   kopWrap: { flexDirection: "row", alignItems: "center", marginBottom: 2 },
-  // logo ~2.75cm = 78pt
-  kopLogo: { width: 78, height: 78, objectFit: "contain" },
-  kopLogoKan: { width: 62, height: 62, objectFit: "contain" },
+  // logo ~2.33cm = 66pt, sama untuk kiri & kanan agar seimbang
+  kopLogo: { width: 64, height: 64, objectFit: "contain" },
+  kopLogoKan: { width: 64, height: 64, objectFit: "contain" },
   kopTeks: { flex: 1, paddingHorizontal: 8 },
-  kopTitle: { fontSize: 13, fontWeight: 700, textAlign: "center", lineHeight: 1.1 },
-  kopSub: { fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.1 },
+  kopTitle: { fontSize: 13, fontWeight: 700, textAlign: "center", lineHeight: 1.05 },
+  kopSub: { fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.05 },
   separator: {
     borderTopWidth: 3,
     borderBottomWidth: 1,
     borderTopColor: "#000000",
     borderBottomColor: "#000000",
     marginTop: 2,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   // Judul & nomor surat: center, line-height 1
   judulSurat: { textAlign: "center", fontSize: 13, fontWeight: 700, textDecoration: "underline", lineHeight: 1, marginBottom: 2 },
-  nomorSurat: { textAlign: "center", fontSize: 12, lineHeight: 1, marginBottom: 8 },
-  isi: { fontSize: 12, lineHeight: 1.15 },
-  intro: { textAlign: "justify", marginTop: 4, marginBottom: 2 },
-  // Tabel identitas sedikit menjorok ke kanan
-  tabel: { width: "100%", marginTop: 1, marginBottom: 4, paddingLeft: 28 },
-  tabelRow: { flexDirection: "row", marginBottom: 2, lineHeight: 1.1 },
-  tabelK: { width: 160 },
-  tabelV: { width: 12 },
+  nomorSurat: { textAlign: "center", fontSize: 12, lineHeight: 1, marginBottom: 6 },
+  isi: { fontSize: 12, lineHeight: 1.5 },
+  intro: { textAlign: "justify", marginTop: 1, marginBottom: 1 },
+  // Tabel identitas sedikit menjorok ke kanan; kolom label pas label terpanjang.
+  // line-height 1.3 (data table, bukan teks naratif) agar hemat ruang vertikal.
+  tabel: { width: "100%", marginTop: 1, marginBottom: 2, paddingLeft: 28 },
+  tabelRow: { flexDirection: "row", marginBottom: 1, lineHeight: 1.3 },
+  tabelK: { width: 122 },
+  tabelV: { width: 8 },
   tabelD: { flex: 1 },
-  paragraf: { textAlign: "justify", marginBottom: 5 },
-  paragrafIndent: { textAlign: "justify", marginBottom: 5, textIndent: 24 },
-  blokStatis: { marginTop: 1, marginBottom: 4, paddingLeft: 28 },
-  blokStatisRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 2 },
+  paragraf: { textAlign: "justify", marginBottom: 4 },
+  paragrafIndent: { textAlign: "justify", marginBottom: 3, textIndent: 24 },
+  blokStatis: { marginTop: 1, marginBottom: 2, paddingLeft: 28 },
+  // Baris agunan adalah form isian kosong → line-height 1 agar hemat & rapi
+  blokStatisRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 0, lineHeight: 1 },
   blokStatisText: { fontSize: 12, flexShrink: 0 },
   // Dotted leader mengisi penuh lebar baris → rata kanan-kiri, tanpa ruang kosong
-  blokStatisDot: { flex: 1, borderBottomWidth: 1, borderBottomStyle: "dotted", marginBottom: 2, marginLeft: 2, marginRight: 2 },
+  blokStatisDot: { flex: 1, borderBottomWidth: 1, borderBottomStyle: "dotted", marginBottom: 1, marginLeft: 2, marginRight: 2 },
   // TTD: blok di kanan bawah, teks di dalamnya rata kiri
-  ttdWrap: { marginTop: 12, alignItems: "flex-end" },
-  ttdBlok: { width: 240, alignItems: "flex-start" },
+  ttdWrap: { marginTop: 2, alignItems: "flex-end" },
+  ttdBlok: { width: 180, alignItems: "flex-start" },
   tanggal: { fontSize: 12, lineHeight: 1, textAlign: "left" },
-  ttdRole: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 4 },
-  ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 3 },
+  ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 2 },
   ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2 },
-  ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 2 },
-  ttdImage: { width: 110, height: 70, objectFit: "contain", marginTop: 2 },
+  ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 1 },
+  ttdImage: { width: 100, height: 60, objectFit: "contain", marginTop: 1 },
   kodeVerifikasi: {
     textAlign: "center",
     fontSize: 9,
-    marginTop: 8,
+    marginTop: 2,
     color: "#444444",
   },
 });
@@ -250,7 +251,6 @@ export function SuratDocument({
         <View style={styles.ttdWrap}>
           <View style={styles.ttdBlok}>
             <Text style={styles.tanggal}>{DESA.kota}, {fmtTanggalHariIni(tanggalTerbit)}</Text>
-            {layout.ttdRoleLine && <Text style={styles.ttdRole}>{layout.ttdRoleLine}</Text>}
             <Text style={styles.ttdJabatan}>{jabatan},</Text>
             {tteBase64 && <PdfImage src={tteBase64} style={styles.ttdImage} />}
             <Text style={styles.ttdNama}>{namaKades}</Text>

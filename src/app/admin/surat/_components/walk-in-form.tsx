@@ -24,7 +24,7 @@ import type { IsianSnapshot, KadesConfig, TemplateKey } from "@/lib/surat/types"
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { RequiredMark } from "@/components/ui/required-mark";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -262,8 +262,13 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <Field><FieldLabel className={labelClass}>Pekerjaan</FieldLabel>
                   <Input value={pekerjaan} onChange={(e) => setPekerjaan(e.target.value)} /></Field>
-                <Field><FieldLabel className={labelClass}>Alamat</FieldLabel>
-                  <Input value={alamat} onChange={(e) => setAlamat(e.target.value)} /></Field>
+                <Field><FieldLabel className={labelClass}>Alamat (Nama Banjar)</FieldLabel>
+                  <Input value={alamat} onChange={(e) => setAlamat(e.target.value)} placeholder="Contoh: Br. Dalem" />
+                  <FieldDescription className="text-[13px] text-muted-foreground">
+                    Cukup isi nama Banjar (mis. &quot;Br. Dalem&quot;). Sisanya (Desa
+                    Songan B, Kecamatan Kintamani, Kabupaten Bangli) ditambahkan
+                    otomatis pada surat.
+                  </FieldDescription></Field>
               </div>
 
               {/* Per-letter specific fields */}

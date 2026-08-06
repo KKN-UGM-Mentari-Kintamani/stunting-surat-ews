@@ -229,9 +229,14 @@ export function WargaProfilForm({ initial, onSaved }: Props) {
             </div>
 
             <Field data-invalid={!!errors.alamat}>
-              <FieldLabel htmlFor="alamat" className={labelClass}>Alamat Lengkap <RequiredMark /></FieldLabel>
-              <Input id="alamat" placeholder="Jl., RT/RW, Dusun, Desa, Kecamatan"
+              <FieldLabel htmlFor="alamat" className={labelClass}>Alamat (Nama Banjar) <RequiredMark /></FieldLabel>
+              <Input id="alamat" placeholder="Contoh: Br. Dalem"
                 aria-invalid={!!errors.alamat} {...register("alamat")} />
+              <FieldDescription className="text-[13px] text-muted-foreground">
+                Cukup isi nama Banjar (mis. &quot;Br. Dalem&quot;). Sisanya (Desa
+                Songan B, Kecamatan Kintamani, Kabupaten Bangli) ditambahkan
+                otomatis pada surat.
+              </FieldDescription>
               {errors.alamat && <FieldError errors={[errors.alamat]} />}
             </Field>
           </FieldGroup>

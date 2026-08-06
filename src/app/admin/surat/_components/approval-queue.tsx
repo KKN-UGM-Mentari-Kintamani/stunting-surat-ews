@@ -14,6 +14,7 @@ import { Eye, FileText, Loader2 } from "lucide-react";
 
 import { downloadLetterPdfAction } from "@/app/layanan-surat/_actions";
 import { LetterDetailPanel } from "@/app/admin/surat/_components/letter-detail-panel";
+import type { KadesConfig } from "@/lib/surat/types";
 import type { QueueItem } from "@/app/admin/surat/page";
 import { LetterStatusBadge } from "@/components/surat/letter-status-badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Props {
   items: QueueItem[];
+  kades?: KadesConfig | null;
 }
 
 const FILTERS = [
@@ -57,7 +59,7 @@ function fmtTgl(v: string): string {
   });
 }
 
-export function ApprovalQueue({ items: initialItems }: Props) {
+export function ApprovalQueue({ items: initialItems, kades }: Props) {
   const [items, setItems] = useState<QueueItem[]>(initialItems);
   const [filter, setFilter] = useState("semua");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -219,6 +221,7 @@ export function ApprovalQueue({ items: initialItems }: Props) {
           open={!!openItem}
           onOpenChange={(v) => { if (!v) setOpenId(null); }}
           onActionDone={handleActionDone}
+          kades={kades}
         />
       )}
     </div>

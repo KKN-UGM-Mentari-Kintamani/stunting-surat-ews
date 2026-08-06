@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 
 import { submitAksiAction } from "@/app/admin/surat/_actions";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
+import type { KadesConfig } from "@/lib/surat/types";
 import type { QueueItem } from "@/app/admin/surat/page";
 import type { IsianSnapshot } from "@/lib/surat/types";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   /** Called after a successful action so the parent updates status w/o reload. */
   onActionDone: (id: string, status: string) => void;
+  /** Current Kades config (nama/jabatan/NIP/TTE) for the preview signer. */
+  kades?: KadesConfig | null;
 }
 
 function fmtTanggal(v: string): string {
@@ -67,7 +70,7 @@ function getSnap(s: Record<string, unknown>, key: string): string {
   return (s[key] as string) ?? "—";
 }
 
-export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Props) {
+export function LetterDetailPanel({ item, open, onOpenChange, onActionDone, kades }: Props) {
   const [aksi, setAksi] = useState<Aksi | null>(null);
   const [catatan, setCatatan] = useState("");
   const [nomorSurat, setNomorSurat] = useState("");
@@ -155,6 +158,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                 namaSurat={item.jenis_surat.nama_surat}
                 templateKey={item.jenis_surat.template_key}
                 snapshot={snapshot}
+                kades={kades}
                 tujuanSktmOverride={isSktm ? tujuanSktm : undefined}
               />
             </div>

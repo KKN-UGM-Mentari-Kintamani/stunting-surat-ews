@@ -41,7 +41,7 @@ export function LetterPreview({
   const layout = buildSuratLayout(templateKey, s, { tujuanSktm: tujuanSktmOverride });
 
   return (
-    <div className="rounded-md border border-border bg-white p-6 text-foreground text-[12px] leading-[1.15]">
+    <div className="rounded-md border border-border bg-white p-6 text-foreground text-[12px] leading-[1.5]">
       <p className="mb-2 text-[12px] italic leading-normal text-muted-foreground">
         Pratinjau — tanpa nomor surat &amp; tanda tangan. Nomor &amp; TTE akan
         ditambahkan otomatis setelah admin menyetujui.
@@ -50,8 +50,8 @@ export function LetterPreview({
       {/* Kop surat */}
       <div className="relative border-t-2 border-black pt-3">
         <div className="absolute top-3 left-0">
-          {/* 2.75cm ≈ 104px */}
-          <Image src="/kop-logo-kiri.png" alt="Logo Kiri" width={104} height={104} className="rounded" />
+          {/* 2.33cm ≈ 88px, sama untuk kiri & kanan */}
+          <Image src="/kop-logo-kiri.png" alt="Logo Kiri" width={88} height={88} className="rounded" />
         </div>
         <h2 className="text-center text-[13px] font-bold uppercase tracking-wide leading-tight">
           Pemerintah Kabupaten Bangli
@@ -59,7 +59,7 @@ export function LetterPreview({
         <p className="text-center text-[12px] font-bold uppercase leading-tight">Kecamatan Kintamani</p>
         <p className="text-center text-[13px] font-bold uppercase leading-tight">Desa Songan B</p>
         <div className="absolute top-3 right-0">
-          <Image src="/kop-logo-kanan.jpg" alt="Logo Kanan" width={80} height={80} className="rounded" />
+          <Image src="/kop-logo-kanan.jpg" alt="Logo Kanan" width={88} height={88} className="rounded" />
         </div>
         <div className="mt-2 border-t-[3px] border-b border-black" />
       </div>
@@ -74,7 +74,7 @@ export function LetterPreview({
       <p className="mt-4 text-justify">{layout.introPenandatangan}</p>
       <table className="mt-1 w-full pl-7 text-[12px]">
         <tbody>
-          <tr><td className="w-40 align-top">Nama</td><td className="w-2">:</td><td><strong>{namaKades}</strong></td></tr>
+          <tr><td className="w-32 align-top">Nama</td><td className="w-2">:</td><td><strong>{namaKades}</strong></td></tr>
           <tr><td className="align-top">Jabatan</td><td>:</td><td>{jabatan}</td></tr>
         </tbody>
       </table>
@@ -84,7 +84,7 @@ export function LetterPreview({
       <table className="mt-1 w-full pl-7 text-[12px]">
         <tbody>
           {layout.identitasPemohon.map((r, i) => (
-            <tr key={i}><td className="w-40 align-top">{r.label}</td><td className="w-2">:</td><td>{r.value}</td></tr>
+            <tr key={i}><td className="w-32 align-top">{r.label}</td><td className="w-2">:</td><td>{r.value}</td></tr>
           ))}
         </tbody>
       </table>
@@ -114,9 +114,8 @@ export function LetterPreview({
 
       {/* Tanda tangan — blok di kanan bawah, teks rata kiri */}
       <div className="mt-6 flex justify-end">
-        <div className="w-[220px] text-left">
+        <div className="w-[180px] text-left">
           <p className="leading-none">{DESA.kota}, {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
-          {layout.ttdRoleLine && <p className="mt-1.5 leading-none">{layout.ttdRoleLine}</p>}
           <p className="mt-1 leading-none">{jabatan},</p>
           <p className="mt-1 font-bold underline leading-none">{namaKades}</p>
           <div className="mt-4 font-bold underline">[Tanda tangan &amp; stempel]</div>
