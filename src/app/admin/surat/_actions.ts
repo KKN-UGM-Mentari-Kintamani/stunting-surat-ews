@@ -116,6 +116,92 @@ export async function approveAction(
 }
 
 /**
+ * Renders the approved letter to PDF (react-pdf) and uploads it to the private
+ * `surat-pdf` bucket. Shared by the online approve pipeline and the walk-in
+ * create flow so both produce identical documents. Returns the storage path +
+ * auto-generated verification code, or an error (nothing persisted on failure).
+ */
+async function renderAndUploadPdf(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  args: {
+    snapshot: IsianSnapshot;
+    nomor: string;
+    kode: string;
+    namaSurat: string;
+    templateKey: "sktm" | "sku" | "skd";
+  },
+): Promise<{ ok: false; error: string } | { ok: true; pdfPath: string; kodeVerifikasi: string }> {
+  try {
+    // 1. Kades config (nama, NIP, jabatan, TTE path).
+    const { data: config } = await supabase
+      .from("surat_kades_config")
+      .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
+      .eq("id", 1)
+      .maybeSingle();
+
+    // 2. TTE image from private bucket → base64 data-URI.
+    let tteBase64: string | null = null;
+    if (config?.ttd_cap_url) {
+      const service = createServiceClient();
+      const { data: tteBlob, error: tteErr } = await service.storage
+        .from("surat-ttd")
+        .download(config.ttd_cap_url);
+      if (!tteErr && tteBlob) {
+        const buf = Buffer.from(await tteBlob.arrayBuffer());
+        tteBase64 = `data:image/png;base64,${buf.toString("base64")}`;
+      } else {
+        console.error("[admin/surat] TTE download failed:", tteErr?.message);
+      }
+    }
+
+    // 3. Kode verifikasi is auto-generated; nomor came from the admin.
+    const tahun = new Date().getFullYear();
+    const nomor = args.nomor.trim();
+    const kodeVerifikasi = generateKodeVerifikasi();
+
+    // 4. Render PDF (react-pdf).
+    const { renderSuratPdf } = await import("@/lib/surat/pdf/surat-document");
+    const pdfBuffer = await renderSuratPdf({
+      namaSurat: args.namaSurat,
+      templateKey: args.templateKey,
+      snapshot: args.snapshot as never,
+      nomorSurat: nomor,
+      kodeVerifikasi,
+      namaKades: config?.nama_kades ?? "Perbekel Desa Songan B",
+      nipKades: config?.nip_kades,
+      jabatanKades: config?.jabatan,
+      tteBase64,
+    });
+
+    // 5. Upload to private bucket.
+    const pdfPath = `${tahun}/${args.kode}/${nomor.replace(/\//g, "-")}.pdf`;
+    const service = createServiceClient();
+    const { error: upErr } = await service.storage
+      .from("surat-pdf")
+      .upload(pdfPath, pdfBuffer, {
+        upsert: false,
+        contentType: "application/pdf",
+      });
+    if (upErr) {
+      console.error("[admin/surat] PDF upload failed:", upErr.message, upErr.statusCode ?? "");
+      const msg = (upErr.message ?? "").toLowerCase();
+      if (msg.includes("jwt") || msg.includes("jws") || msg.includes("unauthorized") || msg.includes("apikey")) {
+        return { ok: false, error: "Gagal mengunggah PDF: kredensial server tidak valid. Periksa SUPABASE_SERVICE_ROLE_KEY." };
+      }
+      if (msg.includes("bucket") || msg.includes("not found") || msg.includes("resource")) {
+        return { ok: false, error: "Gagal mengunggah PDF: bucket 'surat-pdf' belum ada. Buat di Supabase Storage." };
+      }
+      return { ok: false, error: `Gagal mengunggah PDF: ${upErr.message}` };
+    }
+
+    return { ok: true, pdfPath, kodeVerifikasi };
+  } catch (err) {
+    console.error("[admin/surat] renderAndUploadPdf failed:", err);
+    return { ok: false, error: "Gagal menerbitkan surat. Coba lagi." };
+  }
+}
+
+/**
  * Renders the approved letter to PDF (react-pdf), uploads to the private
  * `surat-pdf` bucket, sets the manually-entered nomor + auto kode verifikasi,
  * and marks the letter as disetujui. Runs entirely on Vercel — no VPS.
@@ -145,76 +231,24 @@ async function renderAndApprove(
     const templateKey = (jenisObj?.template_key ?? "sktm") as "sktm" | "sku" | "skd";
     if (!kode) return { ok: false, error: "Jenis surat tidak ditemukan." };
 
-    // 2. Kades config (nama, NIP, jabatan, TTE path).
-    const { data: config } = await supabase
-      .from("surat_kades_config")
-      .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
-      .eq("id", 1)
-      .maybeSingle();
-
-    // 3. TTE image from private bucket → base64 data-URI.
-    let tteBase64: string | null = null;
-    if (config?.ttd_cap_url) {
-      const service = createServiceClient();
-      const { data: tteBlob, error: tteErr } = await service.storage
-        .from("surat-ttd")
-        .download(config.ttd_cap_url);
-      if (!tteErr && tteBlob) {
-        const buf = Buffer.from(await tteBlob.arrayBuffer());
-        tteBase64 = `data:image/png;base64,${buf.toString("base64")}`;
-      } else {
-        console.error("[admin/surat] TTE download failed:", tteErr?.message);
-      }
-    }
-
-    // 4. Kode verifikasi is auto-generated; nomor surat came from the admin.
-    const tahun = new Date().getFullYear();
     const nomor = nomorSurat.trim();
-    const kodeVerifikasi = generateKodeVerifikasi();
-
-    // 5. Render PDF (react-pdf).
-    const { renderSuratPdf } = await import("@/lib/surat/pdf/surat-document");
-    const pdfBuffer = await renderSuratPdf({
+    const rendered = await renderAndUploadPdf(supabase, {
+      snapshot: perm.data_isian_snapshot as unknown as IsianSnapshot,
+      nomor,
+      kode,
       namaSurat,
       templateKey,
-      snapshot: perm.data_isian_snapshot as never,
-      nomorSurat: nomor,
-      kodeVerifikasi,
-      namaKades: config?.nama_kades ?? "Perbekel Desa Songan B",
-      nipKades: config?.nip_kades,
-      jabatanKades: config?.jabatan,
-      tteBase64,
     });
+    if (!rendered.ok) return rendered;
 
-    // 6. Upload to private bucket.
-    const pdfPath = `${tahun}/${kode}/${nomor.replace(/\//g, "-")}.pdf`;
-    const service = createServiceClient();
-    const { error: upErr } = await service.storage
-      .from("surat-pdf")
-      .upload(pdfPath, pdfBuffer, {
-        upsert: false,
-        contentType: "application/pdf",
-      });
-    if (upErr) {
-      console.error("[admin/surat] PDF upload failed:", upErr.message, upErr.statusCode ?? "");
-      const msg = (upErr.message ?? "").toLowerCase();
-      if (msg.includes("jwt") || msg.includes("jws") || msg.includes("unauthorized") || msg.includes("apikey")) {
-        return { ok: false, error: "Gagal mengunggah PDF: kredensial server tidak valid. Periksa SUPABASE_SERVICE_ROLE_KEY." };
-      }
-      if (msg.includes("bucket") || msg.includes("not found") || msg.includes("resource")) {
-        return { ok: false, error: "Gagal mengunggah PDF: bucket 'surat-pdf' belum ada. Buat di Supabase Storage." };
-      }
-      return { ok: false, error: `Gagal mengunggah PDF: ${upErr.message}` };
-    }
-
-    // 7. Mark disetujui with the manually-entered nomor.
+    // 2. Mark disetujui with the manually-entered nomor.
     const { error: updErr } = await supabase
       .from("permohonan_surat")
       .update({
         status: "disetujui",
         nomor_surat_final: nomor,
-        kode_verifikasi: kodeVerifikasi,
-        pdf_final_url: pdfPath,
+        kode_verifikasi: rendered.kodeVerifikasi,
+        pdf_final_url: rendered.pdfPath,
         disetujui_at: new Date().toISOString(),
         processing_at: null,
       })
@@ -310,8 +344,10 @@ export async function submitAksiAction(
 
 /**
  * Walk-in: admin serves the citizen at the counter, so the letter is
- * AUTO-APPROVED immediately — inserted then rendered/approved via the same
- * pipeline as the online queue (manual nomor + kode + PDF + status=disetujui).
+ * AUTO-APPROVED immediately. Unlike online requests (which start as 'menunggu'),
+ * the walk-in row is inserted DIRECTLY as 'disetujui' AFTER the PDF renders &
+ * uploads successfully — so a failed attempt never leaves an orphan 'menunggu'
+ * row behind, and double-submits collide on the unique nomor at insert time.
  */
 export async function createWalkInAction(
   jenisSuratId: string,
@@ -329,35 +365,65 @@ export async function createWalkInAction(
   if (validNomor) return { ok: false, error: validNomor };
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  // Resolve the letter type first (kode/nama/template) for the PDF render.
+  const { data: jenis, error: jenisErr } = await supabase
+    .from("master_jenis_surat")
+    .select("kode_klasifikasi,nama_surat,template_key")
+    .eq("id", jenisSuratId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (jenisErr || !jenis) {
+    return { ok: false, error: "Jenis surat tidak ditemukan." };
+  }
+  const jenisObj = jenis as unknown as
+    | { kode_klasifikasi: string; nama_surat: string; template_key: string }
+    | { kode_klasifikasi: string; nama_surat: string; template_key: string }[];
+  const j = Array.isArray(jenisObj) ? jenisObj[0] : jenisObj;
+  const kode = j?.kode_klasifikasi;
+  const namaSurat = j?.nama_surat ?? "Surat Keterangan";
+  const templateKey = (j?.template_key ?? "sktm") as "sktm" | "sku" | "skd";
+  if (!kode) return { ok: false, error: "Jenis surat tidak ditemukan." };
+
+  // Render + upload the PDF BEFORE touching permohonan_surat. On failure nothing
+  // is persisted, so no orphaned 'menunggu' row can ever exist.
+  const rendered = await renderAndUploadPdf(supabase, {
+    snapshot,
+    nomor,
+    kode,
+    namaSurat,
+    templateKey,
+  });
+  if (!rendered.ok) return { ok: false, error: rendered.error };
+
+  // Insert directly as 'disetujui'. A duplicate nomor → unique violation here
+  // (no intermediate state), so double-submits produce exactly one row.
+  const { data: row, error: insErr } = await supabase
     .from("permohonan_surat")
     .insert({
       user_id: null,
       admin_pembuat_id: adminId,
+      admin_verifikator_id: adminId,
       jenis_surat_id: jenisSuratId,
       data_isian_snapshot: snapshot,
-      status: "menunggu",
+      status: "disetujui",
+      nomor_surat_final: nomor,
+      kode_verifikasi: rendered.kodeVerifikasi,
+      pdf_final_url: rendered.pdfPath,
+      disetujui_at: new Date().toISOString(),
     })
     .select("id")
     .single();
-  if (error) {
-    console.error("[admin/surat] createWalkIn failed:", error.message);
+  if (insErr) {
+    console.error("[admin/surat] createWalkIn failed:", insErr.message);
+    if (insErr.code === "23505") {
+      return { ok: false, error: "Nomor surat sudah dipakai. Gunakan nomor lain." };
+    }
     return { ok: false, error: "Gagal membuat surat walk-in." };
   }
 
-  // Auto-approve (walk-in = verified at the counter). On failure, roll back the
-  // just-inserted row so no orphaned 'menunggu' request lingers in the queue.
-  const approved = await renderAndApprove(data.id, nomor, supabase);
-  if (!approved.ok) {
-    await supabase
-      .from("permohonan_surat")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", data.id);
-    return { ok: false, error: approved.error };
-  }
-
   revalidatePath("/admin/surat");
-  return { ok: true, data: { id: data.id, nomorSurat: nomor, pdfUrl: null } };
+  return { ok: true, data: { id: row.id, nomorSurat: nomor, pdfUrl: null } };
 }
 
 // ---------- Kades config ----------
