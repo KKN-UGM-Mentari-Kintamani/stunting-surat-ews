@@ -7,9 +7,9 @@
  * Entirely suppressed on /admin/* (dashboards manage their own chrome).
  */
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +29,8 @@ export function BottomTabBar() {
     <>
       {/* Slim mobile brand header (bottom tab bar carries navigation). */}
       <header className="flex h-14 items-center border-b border-border bg-background px-5 md:hidden">
-        <Link href="/" className="flex items-center" aria-label="Portal Desa — beranda">
-          <Image
-            src="/Logo.png"
-            alt="Portal Desa"
-            width={36}
-            height={36}
-            className="rounded-md"
-          />
+        <Link href="/" className="flex items-center" aria-label="Sigap Desa — beranda">
+          <BrandLogo size="sm" />
         </Link>
       </header>
 

@@ -4,10 +4,10 @@
  * slim header stays out of the way on low-end mobile screens.
  */
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 export default async function AdminKesehatanLayout({
   children,
@@ -36,16 +36,7 @@ export default async function AdminKesehatanLayout({
             href="/admin/kesehatan"
             className="flex items-center"
           >
-            <Image
-              src="/Logo.png"
-              alt="Portal Desa"
-              width={36}
-              height={36}
-              className="rounded-md"
-            />
-            <span className="font-display text-base font-semibold">
-              Dasbor Posyandu
-            </span>
+            <BrandLogo size="sm" />
           </Link>
         </div>
       </header>

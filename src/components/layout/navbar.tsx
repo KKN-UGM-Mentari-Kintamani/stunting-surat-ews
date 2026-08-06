@@ -8,10 +8,10 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import { ChevronDown, LogOut } from "lucide-react";
 
 import { signOutAction } from "@/lib/auth/actions";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { NAV_ITEMS, roleMenuFor } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -71,15 +71,9 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
         <Link
           href="/"
           className="flex items-center rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-          aria-label="Portal Desa — beranda"
+          aria-label="Sigap Desa — beranda"
         >
-          <Image
-            src="/Logo.png"
-            alt="Portal Desa"
-            width={130}
-            height={130}
-            className="rounded-md"
-          />
+          <BrandLogo size="sm" />
         </Link>
 
         {/* Right: main menu + account block / Masuk. */}

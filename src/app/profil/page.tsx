@@ -22,7 +22,7 @@ import { getProfileData } from "@/app/profil/_queries";
 export const metadata = {
   title: "Profil Saya",
   description:
-    "Kelola profil anak dan riwayat tumbuh kembang si kecil di Portal Desa.",
+    "Kelola profil anak dan riwayat tumbuh kembang si kecil di Sigap Desa.",
 };
 
 export default async function ProfilPage({

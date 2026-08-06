@@ -11,7 +11,7 @@ import { fetchRoleByUserId, landingPathFor } from "@/lib/auth/landing";
 
 export const metadata = {
   title: "Masuk",
-  description: "Masuk ke Portal Desa dengan akun Google Anda.",
+  description: "Masuk ke Sigap Desa dengan akun Google atau email & kata sandi.",
 };
 
 export default async function LoginPage({

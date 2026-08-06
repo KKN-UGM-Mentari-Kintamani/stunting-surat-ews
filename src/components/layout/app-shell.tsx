@@ -6,6 +6,7 @@
  */
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
 import { Navbar, type NavbarUser } from "@/components/layout/navbar";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { createClient } from "@/lib/supabase/server";
 
 async function getNavbarUser(): Promise<NavbarUser | null> {
@@ -45,6 +46,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* pb-20 keeps content clear of the fixed mobile tab bar. */}
       <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
+      <SiteFooter />
       <BottomTabBar />
     </>
   );

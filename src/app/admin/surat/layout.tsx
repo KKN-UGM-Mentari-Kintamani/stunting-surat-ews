@@ -8,11 +8,11 @@
  */
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { LogOut } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "@/lib/auth/actions";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { AdminSuratNav } from "@/app/admin/surat/_components/admin-surat-nav";
 import { Button } from "@/components/ui/button";
 
@@ -38,8 +38,7 @@ export default async function AdminSuratLayout({
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r border-border bg-background md:flex">
         <Link href="/admin/surat" className="flex items-center gap-2 px-5 py-5">
-          <Image src="/Logo.png" alt="Portal Desa" width={32} height={32} className="rounded-md" />
-          <span className="font-display text-base font-semibold">Dasbor Surat</span>
+          <BrandLogo size="sm" />
         </Link>
 
         <AdminSuratNav variant="sidebar" />
@@ -62,8 +61,7 @@ export default async function AdminSuratLayout({
         <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm md:hidden">
           <div className="flex items-center gap-3 px-4">
             <Link href="/admin/surat" className="flex items-center gap-2 py-3">
-              <Image src="/Logo.png" alt="Portal Desa" width={28} height={28} className="rounded-md" />
-              <span className="font-display text-base font-semibold">Dasbor Surat</span>
+              <BrandLogo size="sm" />
             </Link>
             <form action={signOutAction} className="ml-auto">
               <Button variant="ghost" size="sm" aria-label="Keluar">

@@ -23,12 +23,12 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Portal Desa — Kalkulator Stunting",
-    template: "%s | Portal Desa",
+    default: "Sigap Desa — Kalkulator Stunting",
+    template: "%s | Sigap Desa",
   },
   description:
     "Kalkulator deteksi dini stunting berbasis standar WHO 2006, pusat edukasi gizi & MPASI, dan layanan administrasi desa.",
-  icons: [{ rel: "icon", url: "/Logo.png" }],
+  icons: [{ rel: "icon", url: "/logo-sigap.png" }],
 };
 
 export const viewport: Viewport = {

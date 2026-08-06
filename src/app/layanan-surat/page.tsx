@@ -11,7 +11,7 @@ import type { KadesConfig, TemplateKey } from "@/lib/surat/types";
 
 export const metadata = {
   title: "Layanan Surat",
-  description: "Ajukan surat keterangan secara online dari Portal Desa.",
+  description: "Ajukan surat keterangan secara online dari Sigap Desa.",
 };
 
 interface JenisSurat {

@@ -9,7 +9,7 @@
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { KeyRound, Mail, Sprout } from "lucide-react";
+import { KeyRound, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ import {
   signInWithGoogleAction,
   signInWithPasswordAction,
 } from "@/lib/auth/actions";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -144,11 +145,11 @@ export function LoginForm({
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="items-center text-center">
-        <span className="mb-2 flex size-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Sprout className="size-6" strokeWidth={1.5} aria-hidden />
+        <span className="mb-3">
+          <BrandLogo size="lg" />
         </span>
         <CardTitle className="font-display text-[22px] leading-[1.25]">
-          Selamat datang di Portal Desa
+          Selamat datang di Sigap Desa
         </CardTitle>
         <CardDescription className="text-[15px]">
           Masuk untuk menyimpan riwayat tumbuh kembang anak dan mengakses
