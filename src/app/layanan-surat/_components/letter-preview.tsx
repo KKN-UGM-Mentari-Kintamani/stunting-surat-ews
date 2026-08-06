@@ -48,18 +48,18 @@ export function LetterPreview({
       </p>
 
       {/* Kop surat */}
-      <div className="relative border-t-2 border-black pt-3">
-        <div className="absolute top-3 left-0">
-          {/* 2.33cm ≈ 88px, sama untuk kiri & kanan */}
-          <Image src="/kop-logo-kiri.png" alt="Logo Kiri" width={88} height={88} className="rounded" />
-        </div>
-        <h2 className="text-center text-[13px] font-bold uppercase tracking-wide leading-tight">
-          Pemerintah Kabupaten Bangli
-        </h2>
-        <p className="text-center text-[12px] font-bold uppercase leading-tight">Kecamatan Kintamani</p>
-        <p className="text-center text-[13px] font-bold uppercase leading-tight">Desa Songan B</p>
-        <div className="absolute top-3 right-0">
-          <Image src="/kop-logo-kanan.jpg" alt="Logo Kanan" width={88} height={88} className="rounded" />
+      <div className="border-t-2 border-black pt-3">
+        <div className="flex items-center">
+          {/* 64pt ≈ 2.26cm ≈ 85px, sama untuk kiri & kanan (mengikuti PDF) */}
+          <Image src="/kop-logo-kiri.png" alt="Logo Kiri" width={85} height={85} className="rounded shrink-0" />
+          <div className="flex-1 px-2 text-center">
+            <h2 className="text-[13px] font-bold uppercase tracking-wide leading-tight">
+              Pemerintah Kabupaten Bangli
+            </h2>
+            <p className="text-[12px] font-bold uppercase leading-tight">Kecamatan Kintamani</p>
+            <p className="text-[13px] font-bold uppercase leading-tight">Desa Songan B</p>
+          </div>
+          <Image src="/kop-logo-kanan.jpg" alt="Logo Kanan" width={85} height={85} className="rounded shrink-0" />
         </div>
         <div className="mt-2 border-t-[3px] border-b border-black" />
       </div>

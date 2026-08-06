@@ -110,8 +110,8 @@ const styles = StyleSheet.create({
   blokStatisText: { fontSize: 12, flexShrink: 0 },
   // Dotted leader mengisi penuh lebar baris → rata kanan-kiri, tanpa ruang kosong
   blokStatisDot: { flex: 1, borderBottomWidth: 1, borderBottomStyle: "dotted", marginBottom: 1, marginLeft: 2, marginRight: 2 },
-  // TTD: blok di kanan bawah, teks di dalamnya rata kiri
-  ttdWrap: { marginTop: 2, alignItems: "flex-end" },
+  // TTD: blok di kanan bawah, teks di dalamnya rata kiri (sisakan 1 baris kosong)
+  ttdWrap: { marginTop: 18, alignItems: "flex-end" },
   ttdBlok: { width: 180, alignItems: "flex-start" },
   tanggal: { fontSize: 12, lineHeight: 1, textAlign: "left" },
   ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 2 },
