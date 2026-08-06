@@ -71,6 +71,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
   const [aksi, setAksi] = useState<Aksi | null>(null);
   const [catatan, setCatatan] = useState("");
   const [nomorSurat, setNomorSurat] = useState("");
+  const [tujuanSktm, setTujuanSktm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,20 +79,22 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
 
   const s = item.data_isian_snapshot;
   const snapshot = s as unknown as IsianSnapshot;
+  const isSktm = item.jenis_surat.template_key === "sktm";
   const catatanWajib = aksi === "tolak";
   const canSubmit =
     !!aksi &&
     (!catatanWajib || catatan.trim().length > 0) &&
-    (aksi !== "setuju" || nomorSurat.trim().length > 0);
+    (aksi !== "setuju" || nomorSurat.trim().length > 0) &&
+    (aksi !== "setuju" || !isSktm || tujuanSktm.trim().length > 0);
   const sudahDiAksi = item.status !== "menunggu";
 
   function reset() {
     setAksi(null);
     setCatatan("");
     setNomorSurat("");
+    setTujuanSktm("");
     setError(null);
   }
-
   function handleSubmit() {
     if (!aksi || isSubmitting || submittingRef.current) return;
     setError(null);
@@ -104,6 +107,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
           aksi,
           catatan.trim() || undefined,
           aksi === "setuju" ? nomorSurat.trim() : undefined,
+          aksi === "setuju" ? tujuanSktm.trim() || undefined : undefined,
         );
         if (!res.ok) {
           setError(res.error);
@@ -151,6 +155,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                 namaSurat={item.jenis_surat.nama_surat}
                 templateKey={item.jenis_surat.template_key}
                 snapshot={snapshot}
+                tujuanSktmOverride={isSktm ? tujuanSktm : undefined}
               />
             </div>
           </div>
@@ -171,12 +176,28 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                   <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Agama:</dt><dd>{getSnap(s, "agama")}</dd></div>
                   <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Pekerjaan:</dt><dd>{getSnap(s, "pekerjaan")}</dd></div>
                   <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Alamat:</dt><dd>{getSnap(s, "alamat")}</dd></div>
-                  {(s.data_khusus as Record<string, string> | undefined)?.nama_usaha && (
-                    <>
-                      <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Usaha:</dt><dd>{(s.data_khusus as Record<string, string>).nama_usaha}</dd></div>
-                      <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Jenis:</dt><dd>{(s.data_khusus as Record<string, string>).jenis_usaha}</dd></div>
-                    </>
-                  )}
+                  {Object.entries(s.data_khusus ?? {}).map(([k, v]) => {
+                    const labelMap: Record<string, string> = {
+                      jenis_usaha: "Jenis Usaha",
+                      lokasi_usaha: "Lokasi Usaha",
+                      alamat_tujuan_pindah: "Alamat Tujuan Pindah",
+                      alasan_pindah: "Alasan Pindah",
+                      jenis_kepindahan: "Jenis Kepindahan",
+                      status_kk_yang_pindah: "Status KK yang Pindah",
+                      nama_ayah: "Nama Ayah",
+                      nama_ibu: "Nama Ibu",
+                      tahun_meninggal: "Tahun Meninggal",
+                      tempat_meninggal: "Tempat Meninggal",
+                      sebab_meninggal: "Sebab Meninggal",
+                      tujuan_sktm: "Tujuan SKTM",
+                    };
+                    return v ? (
+                      <div className="flex flex-wrap gap-2" key={k}>
+                        <dt className="text-muted-foreground">{labelMap[k] ?? k}:</dt>
+                        <dd>{String(v)}</dd>
+                      </div>
+                    ) : null;
+                  })}
                   <div className="border-t border-border pt-1.5" />
                   <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">Tujuan:</dt><dd>{getSnap(s, "tujuan_permohonan")}</dd></div>
                   <div className="flex flex-wrap gap-2"><dt className="text-muted-foreground">No. Telepon:</dt><dd className="tabular-data">{getSnap(s, "nomor_telepon")}</dd></div>
@@ -230,16 +251,34 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone }: Pr
                     </SelectContent>
                   </Select>
                   {aksi === "setuju" && (
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="nomor-surat" className="text-[13px] font-medium leading-snug">
-                        Nomor Surat <RequiredMark />
-                      </label>
-                      <Input
-                        id="nomor-surat"
-                        value={nomorSurat}
-                        onChange={(e) => setNomorSurat(e.target.value)}
-                        placeholder="Contoh: 470/012/VII/2026"
-                      />
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="nomor-surat" className="text-[13px] font-medium leading-snug">
+                          Nomor Surat <RequiredMark />
+                        </label>
+                        <Input
+                          id="nomor-surat"
+                          value={nomorSurat}
+                          onChange={(e) => setNomorSurat(e.target.value)}
+                          placeholder="Contoh: 470/012/VII/2026"
+                        />
+                      </div>
+                      {isSktm && (
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor="tujuan-sktm" className="text-[13px] font-medium leading-snug">
+                            Tujuan SKTM <RequiredMark />
+                          </label>
+                          <Input
+                            id="tujuan-sktm"
+                            value={tujuanSktm}
+                            onChange={(e) => setTujuanSktm(e.target.value)}
+                            placeholder="Frasa yang tertulis di surat, contoh: untuk administrasi mencari sekolah"
+                          />
+                          <p className="text-[12px] text-muted-foreground">
+                            Frasa ini tertulis pada surat: {"\u201c"}...masuk kategori keluarga tidak mampu, dan {tujuanSktm.trim() || "[tujuan]"}. Apabila...{"\u201d"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                   <Textarea

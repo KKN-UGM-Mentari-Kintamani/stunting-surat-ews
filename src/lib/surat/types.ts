@@ -3,6 +3,38 @@
  */
 export type StatusPermohonan = 'menunggu' | 'revisi' | 'disetujui' | 'ditolak';
 
+/** Which layout renders a letter type (master_jenis_surat.template_key). */
+export type TemplateKey =
+  | "sktm"  // Surat Keterangan Tidak Mampu
+  | "sku"   // Surat Keterangan Usaha (BRI)
+  | "skp"   // Surat Keterangan Pindah Domisili
+  | "skd"   // Surat Keterangan Domisili
+  | "skl"   // Surat Keterangan Lahir
+  | "skli"  // Surat Keterangan Lahir dari Seorang Ibu
+  | "skm";  // Surat Keterangan Meninggal
+
+/** Service-specific fields per letter type (data_khusus). */
+export interface SuratFieldKhusus {
+  /** SKU */
+  jenis_usaha?: string;
+  lokasi_usaha?: string;
+  /** SKP */
+  alamat_tujuan_pindah?: string;
+  alasan_pindah?: string;
+  jenis_kepindahan?: string;
+  status_kk_yang_pindah?: string;
+  /** SKL */
+  nama_ayah?: string;
+  /** SKL & SKLI */
+  nama_ibu?: string;
+  /** SKM */
+  tahun_meninggal?: string;
+  tempat_meninggal?: string;
+  sebab_meninggal?: string;
+  /** SKTM — the purpose phrase typed by the village staff at approval time. */
+  tujuan_sktm?: string;
+}
+
 /** Kepala Desa / letter signer configuration (surat_kades_config). */
 export interface KadesConfig {
   nama_kades: string;
@@ -27,8 +59,8 @@ export interface WargaProfilData {
 
 /** Shape of `data_isian_snapshot` — frozen at request time (Master Doc §3). */
 export interface IsianSnapshot extends WargaProfilData {
-  /** Service-specific fields, e.g. { nama_usaha: "..." } for SKU. */
-  data_khusus?: Record<string, string>;
+  /** Service-specific fields, e.g. { jenis_usaha: "..." } for SKU. */
+  data_khusus?: SuratFieldKhusus;
   /** Administrative consideration inputs (shown to the verifier admin). */
   tujuan_permohonan?: string;
   nomor_telepon?: string;

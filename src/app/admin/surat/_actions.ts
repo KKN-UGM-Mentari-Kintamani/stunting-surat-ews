@@ -76,6 +76,7 @@ export async function getApprovalQueueAction(
 export async function approveAction(
   permohonanId: string,
   nomorSurat: string,
+  tujuanSktm?: string,
 ): Promise<ActionResult> {
   let adminId: string;
   try {
@@ -104,7 +105,7 @@ export async function approveAction(
   // Render the final PDF via react-pdf (in-process, serverless-friendly) and
   // upload it, then mark disetujui. Any failure clears processing_at so the
   // admin can retry (PRD §4.4 transactional integrity).
-  const result = await renderAndApprove(permohonanId, nomor, supabase);
+  const result = await renderAndApprove(permohonanId, nomor, supabase, tujuanSktm);
   if (!result.ok) {
     await supabase
       .from("permohonan_surat")
@@ -128,7 +129,8 @@ async function renderAndUploadPdf(
     nomor: string;
     kode: string;
     namaSurat: string;
-    templateKey: "sktm" | "sku" | "skd";
+    templateKey: "sktm" | "sku" | "skp" | "skd" | "skl" | "skli" | "skm";
+    tujuanSktm?: string;
   },
 ): Promise<{ ok: false; error: string } | { ok: true; pdfPath: string; kodeVerifikasi: string }> {
   try {
@@ -171,6 +173,7 @@ async function renderAndUploadPdf(
       nipKades: config?.nip_kades,
       jabatanKades: config?.jabatan,
       tteBase64,
+      tujuanSktm: args.tujuanSktm,
     });
 
     // 5. Upload to private bucket.
@@ -220,6 +223,7 @@ async function renderAndApprove(
   permohonanId: string,
   nomorSurat: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
+  tujuanSktm?: string,
 ): Promise<ActionResult> {
   try {
     // 1. Load permohonan + jenis surat + snapshot.
@@ -238,16 +242,28 @@ async function renderAndApprove(
     const jenisObj = Array.isArray(jenis) ? jenis[0] : jenis;
     const kode = jenisObj?.kode_klasifikasi;
     const namaSurat = jenisObj?.nama_surat ?? "Surat Keterangan";
-    const templateKey = (jenisObj?.template_key ?? "sktm") as "sktm" | "sku" | "skd";
+    const templateKey = (jenisObj?.template_key ?? "sktm") as "sktm" | "sku" | "skp" | "skd" | "skl" | "skli" | "skm";
     if (!kode) return { ok: false, error: "Jenis surat tidak ditemukan." };
+
+    // For SKTM the staff types the purpose phrase at approval (decision): merge
+    // it into the frozen snapshot so the final document carries exactly what
+    // the staff approved — consistent with the Snapshot Pattern.
+    const snapshot = perm.data_isian_snapshot as unknown as IsianSnapshot;
+    const snapshotFinal = tujuanSktm?.trim()
+      ? {
+          ...snapshot,
+          data_khusus: { ...(snapshot.data_khusus ?? {}), tujuan_sktm: tujuanSktm.trim() },
+        }
+      : snapshot;
 
     const nomor = nomorSurat.trim();
     const rendered = await renderAndUploadPdf(supabase, {
-      snapshot: perm.data_isian_snapshot as unknown as IsianSnapshot,
+      snapshot: snapshotFinal,
       nomor,
       kode,
       namaSurat,
       templateKey,
+      tujuanSktm,
     });
     if (!rendered.ok) return rendered;
 
@@ -259,6 +275,9 @@ async function renderAndApprove(
         nomor_surat_final: nomor,
         kode_verifikasi: rendered.kodeVerifikasi,
         pdf_final_url: rendered.pdfPath,
+        // Persist the approved purpose back into the snapshot (immutability of
+        // the published letter, not of the original request).
+        ...(snapshotFinal !== snapshot ? { data_isian_snapshot: snapshotFinal } : {}),
         disetujui_at: new Date().toISOString(),
         processing_at: null,
       })
@@ -343,9 +362,10 @@ export async function submitAksiAction(
   aksi: "setuju" | "tolak",
   catatan?: string,
   nomorSurat?: string,
+  tujuanSktm?: string,
 ): Promise<ActionResult> {
   if (aksi === "setuju") {
-    return approveAction(permohonanId, nomorSurat ?? "");
+    return approveAction(permohonanId, nomorSurat ?? "", tujuanSktm);
   }
   return rejectAction(permohonanId, catatan ?? "");
 }
@@ -392,7 +412,7 @@ export async function createWalkInAction(
   const j = Array.isArray(jenisObj) ? jenisObj[0] : jenisObj;
   const kode = j?.kode_klasifikasi;
   const namaSurat = j?.nama_surat ?? "Surat Keterangan";
-  const templateKey = (j?.template_key ?? "sktm") as "sktm" | "sku" | "skd";
+  const templateKey = (j?.template_key ?? "sktm") as "sktm" | "sku" | "skp" | "skd" | "skl" | "skli" | "skm";
   if (!kode) return { ok: false, error: "Jenis surat tidak ditemukan." };
 
   // Render + upload the PDF BEFORE touching permohonan_surat. On failure nothing

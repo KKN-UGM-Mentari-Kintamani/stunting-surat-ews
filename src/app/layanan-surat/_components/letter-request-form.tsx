@@ -8,8 +8,9 @@ import { useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, FileText, Loader2 } from "lucide-react";
 
 import { submitPermohonanAction } from "@/app/layanan-surat/_actions";
-import type { KadesConfig, WargaProfilData } from "@/lib/surat/types";
+import type { KadesConfig, TemplateKey, WargaProfilData } from "@/lib/surat/types";
 import { buildSnapshot } from "@/lib/surat/snapshot";
+import { FIELD_DEFS, requiredKeys } from "@/lib/surat/fields";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,7 +42,7 @@ interface JenisSurat {
   id: string;
   nama_surat: string;
   kode_klasifikasi: string;
-  template_key: "sktm" | "sku" | "skd";
+  template_key: TemplateKey;
 }
 
 interface Props {
@@ -60,10 +61,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   const [jenisId, setJenisId] = useState("");
   const [nama, setNama] = useState(profil.nama);
   const [nik, setNik] = useState(profil.nik);
-  const [namaUsaha, setNamaUsaha] = useState("");
-  const [jenisUsaha, setJenisUsaha] = useState("");
-  const [sejakTahun, setSejakTahun] = useState("");
-  const [lokasiUsaha, setLokasiUsaha] = useState("");
+  const [dataKhusus, setDataKhusus] = useState<Record<string, string>>({});
   // Admin consideration inputs (shown to the verifier).
   const [tujuan, setTujuan] = useState("");
   const [telepon, setTelepon] = useState("");
@@ -73,7 +71,12 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   const submittingRef = useRef(false);
 
   const selectedType = jenisSuratList.find((j) => j.id === jenisId);
-  const isSKU = selectedType?.template_key === "sku";
+  const templateKey = selectedType?.template_key;
+  const fields = templateKey ? FIELD_DEFS[templateKey] : [];
+
+  function setField(key: string, value: string) {
+    setDataKhusus((prev) => ({ ...prev, [key]: value }));
+  }
 
   function handlePreview() {
     if (!jenisId || !nama.trim() || nik.length !== 16) {
@@ -92,11 +95,11 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
       setError("Centang pernyataan tanggung jawab untuk melanjutkan.");
       return;
     }
-    if (
-      isSKU &&
-      (!namaUsaha.trim() || !jenisUsaha.trim() || !sejakTahun.trim() || !lokasiUsaha.trim())
-    ) {
-      setError("Lengkapi nama usaha, jenis usaha, sejak tahun, dan lokasi usaha.");
+    const missing = (templateKey ? requiredKeys(templateKey) : []).filter(
+      (k) => !(dataKhusus[k] ?? "").trim(),
+    );
+    if (missing.length > 0) {
+      setError("Lengkapi semua isian khusus surat yang wajib.");
       return;
     }
     setError(null);
@@ -107,14 +110,6 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
     if (submittingRef.current) return; // guard double-submit
     setError(null);
     submittingRef.current = true;
-    const dataKhusus = isSKU
-      ? {
-          nama_usaha: namaUsaha,
-          jenis_usaha: jenisUsaha,
-          sejak_tahun: sejakTahun,
-          lokasi_usaha: lokasiUsaha,
-        }
-      : undefined;
     const snapshot = buildSnapshot({ ...profil, nama, nik }, {
       dataKhusus,
       tujuanPermohonan: tujuan.trim(),
@@ -134,10 +129,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
         setJenisId("");
         setNama(profil.nama);
         setNik(profil.nik);
-        setNamaUsaha("");
-        setJenisUsaha("");
-        setSejakTahun("");
-        setLokasiUsaha("");
+        setDataKhusus({});
         setTujuan("");
         setTelepon("");
         setPernyataan(false);
@@ -195,29 +187,48 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                 </Field>
               </div>
 
-              {isSKU && (
+              {fields.length > 0 && (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="f-usaha" className={labelClass}>Nama Usaha <RequiredMark /></FieldLabel>
-                    <Input id="f-usaha" value={namaUsaha} onChange={(e) => setNamaUsaha(e.target.value)}
-                      placeholder="Contoh: Warung Bu Sari" />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="f-jenis" className={labelClass}>Jenis Usaha <RequiredMark /></FieldLabel>
-                    <Input id="f-jenis" value={jenisUsaha} onChange={(e) => setJenisUsaha(e.target.value)}
-                      placeholder="Contoh: Dagangan" />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="f-tahun" className={labelClass}>Sejak Tahun <RequiredMark /></FieldLabel>
-                    <Input id="f-tahun" value={sejakTahun} onChange={(e) => setSejakTahun(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      inputMode="numeric" maxLength={4} placeholder="Contoh: 2015" />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="f-lokasi" className={labelClass}>Lokasi Usaha <RequiredMark /></FieldLabel>
-                    <Input id="f-lokasi" value={lokasiUsaha} onChange={(e) => setLokasiUsaha(e.target.value)}
-                      placeholder="Contoh: Dusun Songan, Desa Songan B" />
-                  </Field>
+                  {fields.map((f) => (
+                    <Field key={f.key}>
+                      <FieldLabel htmlFor={`f-${f.key}`} className={labelClass}>
+                        {f.label}{f.required && <RequiredMark />}
+                      </FieldLabel>
+                      {f.type === "select" ? (
+                        <Select value={dataKhusus[f.key] ?? ""} onValueChange={(v) => setField(f.key, v)}>
+                          <SelectTrigger id={`f-${f.key}`} className="w-full">
+                            <SelectValue placeholder="Pilih" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {(f.options ?? []).map((o) => (
+                                <SelectItem key={o} value={o}>{o}</SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          id={`f-${f.key}`}
+                          value={dataKhusus[f.key] ?? ""}
+                          onChange={(e) => {
+                            let v = e.target.value;
+                            if (f.type === "year") v = v.replace(/\D/g, "").slice(0, 4);
+                            setField(f.key, v);
+                          }}
+                          inputMode={f.type === "year" ? "numeric" : undefined}
+                          maxLength={f.type === "year" ? 4 : undefined}
+                          placeholder={f.placeholder}
+                        />
+                      )}
+                    </Field>
+                  ))}
                 </div>
+              )}
+              {templateKey === "sktm" && (
+                <p className="text-[13px] text-muted-foreground">
+                  Tujuan SKTM yang tertulis pada surat akan ditentukan perangkat desa saat verifikasi.
+                </p>
               )}
 
               {/* Administrative consideration inputs (shown to the verifier admin) */}
@@ -275,11 +286,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                 nik.length !== 16 ||
                 !tujuan.trim() ||
                 !pernyataan ||
-                (isSKU &&
-                  (!namaUsaha.trim() ||
-                    !jenisUsaha.trim() ||
-                    !sejakTahun.trim() ||
-                    !lokasiUsaha.trim()))
+                (templateKey ? requiredKeys(templateKey) : []).some((k) => !(dataKhusus[k] ?? "").trim())
               }
               className="gap-2"
             >
@@ -296,7 +303,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
               templateKey={selectedType?.template_key ?? "sktm"}
               kades={kades}
               snapshot={buildSnapshot({ ...profil, nama, nik }, {
-                dataKhusus: isSKU ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha } : undefined,
+                dataKhusus,
                 tujuanPermohonan: tujuan.trim(),
                 nomorTelepon: telepon.trim() || undefined,
                 pernyataanBenar: pernyataan,

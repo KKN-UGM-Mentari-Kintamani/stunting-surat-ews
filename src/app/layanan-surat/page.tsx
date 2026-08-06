@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 
 import { LayananSuratClient } from "@/app/layanan-surat/_components/layanan-surat-client";
 import { createClient } from "@/lib/supabase/server";
-import type { KadesConfig } from "@/lib/surat/types";
+import type { KadesConfig, TemplateKey } from "@/lib/surat/types";
 
 export const metadata = {
   title: "Layanan Surat",
@@ -18,7 +18,7 @@ interface JenisSurat {
   id: string;
   nama_surat: string;
   kode_klasifikasi: string;
-  template_key: "sktm" | "sku" | "skd";
+  template_key: TemplateKey;
 }
 
 export default async function LayananSuratPage() {

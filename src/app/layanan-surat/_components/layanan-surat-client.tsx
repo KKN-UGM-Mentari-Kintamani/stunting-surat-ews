@@ -10,13 +10,13 @@ import { useState } from "react";
 import { WargaProfilForm } from "@/app/layanan-surat/_components/warga-profil-form";
 import { LetterRequestForm } from "@/app/layanan-surat/_components/letter-request-form";
 import { LetterHistory } from "@/app/layanan-surat/_components/letter-history";
-import type { KadesConfig, WargaProfilData } from "@/lib/surat/types";
+import type { KadesConfig, TemplateKey, WargaProfilData } from "@/lib/surat/types";
 
 interface JenisSurat {
   id: string;
   nama_surat: string;
   kode_klasifikasi: string;
-  template_key: "sktm" | "sku" | "skd";
+  template_key: TemplateKey;
 }
 
 interface Props {

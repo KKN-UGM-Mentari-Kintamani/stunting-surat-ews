@@ -3,12 +3,12 @@
  * The snapshot is frozen into permohonan_surat.data_isian_snapshot at submit
  * time (Master Doc §3 Snapshot pattern) — never re-read from live profile.
  */
-import type { IsianSnapshot, WargaProfilData } from "@/lib/surat/types";
+import type { IsianSnapshot, SuratFieldKhusus, WargaProfilData } from "@/lib/surat/types";
 
 export function buildSnapshot(
   profil: WargaProfilData,
   opts: {
-    dataKhusus?: Record<string, string>;
+    dataKhusus?: SuratFieldKhusus;
     tujuanPermohonan?: string;
     nomorTelepon?: string;
     pernyataanBenar?: boolean;

@@ -4,6 +4,7 @@
  * sorting is newest-first. Client handles filtering + actions without reload.
  */
 import { createClient } from "@/lib/supabase/server";
+import type { TemplateKey } from "@/lib/surat/types";
 import { ApprovalQueue } from "@/app/admin/surat/_components/approval-queue";
 import { QueueStats } from "@/app/admin/surat/_components/queue-stats";
 
@@ -20,7 +21,7 @@ export interface QueueItem {
   created_at: string;
   updated_at: string | null;
   disetujui_at: string | null;
-  jenis_surat: { nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd" };
+  jenis_surat: { nama_surat: string; kode_klasifikasi: string; template_key: TemplateKey };
 }
 
 export default async function AdminSuratPage() {
@@ -50,7 +51,7 @@ export default async function AdminSuratPage() {
     created_at: string;
     updated_at: string | null;
     disetujui_at: string | null;
-    jenis_surat: { nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd" }[] | { nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd" } | null;
+    jenis_surat: { nama_surat: string; kode_klasifikasi: string; template_key: TemplateKey }[] | { nama_surat: string; kode_klasifikasi: string; template_key: TemplateKey } | null;
   }>).map((r) => {
     const jenis = Array.isArray(r.jenis_surat)
       ? r.jenis_surat[0]

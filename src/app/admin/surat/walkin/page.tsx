@@ -1,12 +1,12 @@
 /* src/app/admin/surat/walkin/page.tsx */
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { KadesConfig } from "@/lib/surat/types";
+import type { KadesConfig, TemplateKey } from "@/lib/surat/types";
 import { WalkInForm } from "@/app/admin/surat/_components/walk-in-form";
 
 export const metadata = { title: "Buat Surat Walk-In" };
 
-interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd"; }
+interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; template_key: TemplateKey; }
 
 export default async function WalkInPage() {
   const supabase = await createClient();

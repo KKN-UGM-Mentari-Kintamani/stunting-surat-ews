@@ -7,6 +7,10 @@
  * AUTO-APPROVED immediately after the admin confirms. On success a toast
  * confirms it and points to the queue; the form resets so the admin can serve
  * the next citizen right away.
+ *
+ * Per-letter specific fields (jenis usaha, pindah domisili, nama ayah/ibu,
+ * meninggal, dst) are rendered dynamically from FIELD_DEFS; for SKTM the admin
+ * types the purpose phrase (tujuan_sktm) that appears in the final document.
  */
 import { useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
@@ -15,17 +19,18 @@ import { toast } from "sonner";
 import { createWalkInAction } from "@/app/admin/surat/_actions";
 import { buildSnapshot } from "@/lib/surat/snapshot";
 import { emptyProfil } from "@/lib/surat/snapshot";
-import type { IsianSnapshot, KadesConfig } from "@/lib/surat/types";
+import { FIELD_DEFS, requiredKeys } from "@/lib/surat/fields";
+import type { IsianSnapshot, KadesConfig, TemplateKey } from "@/lib/surat/types";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { RequiredMark } from "@/components/ui/required-mark";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; template_key: "sktm" | "sku" | "skd"; }
+interface JenisSurat { id: string; nama_surat: string; kode_klasifikasi: string; template_key: TemplateKey; }
 const labelClass = "text-[15px] font-medium leading-snug";
 
 type Step = "form" | "preview";
@@ -46,6 +51,8 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
   const [noKk, setNoKk] = useState("");
   const [tujuan, setTujuan] = useState("");
   const [telepon, setTelepon] = useState("");
+  const [dataKhusus, setDataKhusus] = useState<Record<string, string>>({});
+  const [tujuanSktm, setTujuanSktm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,11 +61,8 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
   const [nomorSurat, setNomorSurat] = useState("");
 
   const selectedType = jenisSuratList.find((j) => j.id === jenisId);
-  const isSKU = selectedType?.template_key === "sku";
-  const [namaUsaha, setNamaUsaha] = useState("");
-  const [jenisUsaha, setJenisUsaha] = useState("");
-  const [sejakTahun, setSejakTahun] = useState("");
-  const [lokasiUsaha, setLokasiUsaha] = useState("");
+  const templateKey = selectedType?.template_key;
+  const fields = templateKey ? FIELD_DEFS[templateKey] : [];
 
   function resetForm() {
     setJenisId("");
@@ -75,13 +79,15 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
     setNoKk("");
     setTujuan("");
     setTelepon("");
-    setNamaUsaha("");
-    setJenisUsaha("");
-    setSejakTahun("");
-    setLokasiUsaha("");
+    setDataKhusus({});
+    setTujuanSktm("");
     setNomorSurat("");
     setPreviewSnapshot(null);
     setStep("form");
+  }
+
+  function setField(key: string, value: string) {
+    setDataKhusus((prev) => ({ ...prev, [key]: value }));
   }
 
   function goToPreview(e: React.FormEvent) {
@@ -99,23 +105,27 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
       setError("Nomor telepon tidak valid (8–16 digit).");
       return;
     }
-    if (
-      isSKU &&
-      (!namaUsaha.trim() || !jenisUsaha.trim() || !sejakTahun.trim() || !lokasiUsaha.trim())
-    ) {
-      setError("Lengkapi nama usaha, jenis usaha, sejak tahun, dan lokasi usaha.");
+    if (templateKey === "sktm" && !tujuanSktm.trim()) {
+      setError("Isi tujuan SKTM (akan tertulis pada surat).");
+      return;
+    }
+    const missing = (templateKey ? requiredKeys(templateKey) : []).filter(
+      (k) => !(dataKhusus[k] ?? "").trim(),
+    );
+    if (missing.length > 0) {
+      setError("Lengkapi semua isian khusus surat yang wajib.");
       return;
     }
     const profil = { ...emptyProfil(), nama, nik, no_kk: noKk, tempat_lahir: tempatLahir, tanggal_lahir: tglLahir, jenis_kelamin: jenisKelamin, status, kewarganegaraan, agama, pekerjaan, alamat };
-    const dataKhusus = isSKU
-      ? { nama_usaha: namaUsaha, jenis_usaha: jenisUsaha, sejak_tahun: sejakTahun, lokasi_usaha: lokasiUsaha }
-      : undefined;
     const snapshot = buildSnapshot(profil, {
       dataKhusus,
       tujuanPermohonan: tujuan.trim(),
       nomorTelepon: telepon.trim() || undefined,
       pernyataanBenar: true, // Admin confirmed identity at the counter.
     });
+    if (templateKey === "sktm") {
+      snapshot.data_khusus = { ...snapshot.data_khusus, tujuan_sktm: tujuanSktm.trim() };
+    }
     setPreviewSnapshot(snapshot);
     setStep("preview");
   }
@@ -160,10 +170,11 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
           <div className="flex flex-col gap-4">
             <LetterPreview
               namaSurat={selectedType?.nama_surat ?? "Surat"}
-              templateKey={selectedType?.template_key ?? "sktm"}
+              templateKey={templateKey ?? "sktm"}
               snapshot={previewSnapshot}
               kades={kades}
               nomorSurat={nomorSurat}
+              tujuanSktmOverride={templateKey === "sktm" ? tujuanSktm : undefined}
             />
             <div className="flex flex-col gap-1">
               <label htmlFor="nomor-surat" className="text-[15px] font-medium leading-snug">
@@ -194,7 +205,7 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
             <FieldGroup>
               <Field>
                 <FieldLabel className={labelClass}>Jenis Surat <RequiredMark /></FieldLabel>
-                <Select value={jenisId} onValueChange={setJenisId}>
+                <Select value={jenisId} onValueChange={(v) => { setJenisId(v); setDataKhusus({}); setTujuanSktm(""); }}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Pilih jenis surat" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     {jenisSuratList.map((j) => <SelectItem key={j.id} value={j.id}>{j.nama_surat}</SelectItem>)}
@@ -254,24 +265,49 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
                 <Field><FieldLabel className={labelClass}>Alamat</FieldLabel>
                   <Input value={alamat} onChange={(e) => setAlamat(e.target.value)} /></Field>
               </div>
-              {isSKU && (
+
+              {/* Per-letter specific fields */}
+              {templateKey === "sktm" && (
+                <Field>
+                  <FieldLabel className={labelClass}>Tujuan SKTM <RequiredMark /></FieldLabel>
+                  <Input value={tujuanSktm} onChange={(e) => setTujuanSktm(e.target.value)}
+                    placeholder="Frasa yang tertulis di surat, contoh: untuk administrasi mencari sekolah" />
+                </Field>
+              )}
+              {fields.length > 0 && (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <Field><FieldLabel className={labelClass}>Nama Usaha</FieldLabel>
-                    <Input value={namaUsaha} onChange={(e) => setNamaUsaha(e.target.value)} /></Field>
-                  <Field><FieldLabel className={labelClass}>Jenis Usaha</FieldLabel>
-                    <Input value={jenisUsaha} onChange={(e) => setJenisUsaha(e.target.value)} /></Field>
-                  <Field><FieldLabel className={labelClass}>Sejak Tahun</FieldLabel>
-                    <Input value={sejakTahun} onChange={(e) => setSejakTahun(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" maxLength={4} /></Field>
-                  <Field><FieldLabel className={labelClass}>Lokasi Usaha</FieldLabel>
-                    <Input value={lokasiUsaha} onChange={(e) => setLokasiUsaha(e.target.value)} /></Field>
+                  {fields.map((f) => (
+                    <Field key={f.key}>
+                      <FieldLabel className={labelClass}>
+                        {f.label}{f.required && <RequiredMark />}
+                      </FieldLabel>
+                      {f.type === "select" ? (
+                        <Select value={dataKhusus[f.key] ?? ""} onValueChange={(v) => setField(f.key, v)}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                          <SelectContent><SelectGroup>
+                            {(f.options ?? []).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectGroup></SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={dataKhusus[f.key] ?? ""}
+                          onChange={(e) => {
+                            let v = e.target.value;
+                            if (f.type === "year") v = v.replace(/\D/g, "").slice(0, 4);
+                            setField(f.key, v);
+                          }}
+                          inputMode={f.type === "year" ? "numeric" : undefined}
+                          maxLength={f.type === "year" ? 4 : undefined}
+                          placeholder={f.placeholder}
+                        />
+                      )}
+                    </Field>
+                  ))}
                 </div>
               )}
 
               {/* Administrative consideration inputs */}
               <div className="mt-1 border-t border-border pt-4">
-                {/* <p className="mb-3 text-[13px] font-medium text-muted-foreground">
-                  Data ini digunakan perangkat desa untuk menilai permohonan.
-                </p> */}
                 <Field><FieldLabel className={labelClass}>Tujuan Permohonan Surat <RequiredMark /></FieldLabel>
                   <Input value={tujuan} onChange={(e) => setTujuan(e.target.value)}
                     placeholder="Contoh: Untuk pengajuan bantuan sosial" /></Field>
@@ -281,7 +317,6 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
               </div>
             </FieldGroup>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            {/* Required logic mirrors goToPreview: jenis, nama, NIK, tujuan; + SKU fields. */}
             <Button
               type="submit"
               disabled={
@@ -289,11 +324,8 @@ export function WalkInForm({ jenisSuratList, kades }: { jenisSuratList: JenisSur
                 !nama.trim() ||
                 nik.length !== 16 ||
                 !tujuan.trim() ||
-                (isSKU &&
-                  (!namaUsaha.trim() ||
-                    !jenisUsaha.trim() ||
-                    !sejakTahun.trim() ||
-                    !lokasiUsaha.trim()))
+                (templateKey === "sktm" && !tujuanSktm.trim()) ||
+                (templateKey ? requiredKeys(templateKey) : []).some((k) => !(dataKhusus[k] ?? "").trim())
               }
               className="gap-1.5 w-fit"
             >

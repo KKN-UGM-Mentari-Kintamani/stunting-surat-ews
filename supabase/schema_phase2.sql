@@ -58,43 +58,77 @@ CREATE TABLE IF NOT EXISTS public.master_jenis_surat (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   nama_surat        text NOT NULL CHECK (char_length(trim(nama_surat)) > 0),
   kode_klasifikasi  text NOT NULL,
-  -- Which body template renders this letter ('sktm' | 'sku' | 'skd').
+  -- Which body template renders this letter (7 template keys).
   template_key      text NOT NULL DEFAULT 'sktm'
-                    CHECK (template_key IN ('sktm','sku','skd')),
+                    CHECK (template_key IN ('sktm','sku','skp','skd','skl','skli','skm')),
   is_active         boolean NOT NULL DEFAULT true,
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_master_jenis_surat_active ON public.master_jenis_surat(is_active);
 
--- Idempotent migration: add template_key to DBs created before this column.
+-- Idempotent migration: add template_key to DBs created before this column,
+-- then widen the CHECK to the full 7-template set.
 ALTER TABLE public.master_jenis_surat
-  ADD COLUMN IF NOT EXISTS template_key text NOT NULL DEFAULT 'sktm'
-    CHECK (template_key IN ('sktm','sku','skd'));
+  ADD COLUMN IF NOT EXISTS template_key text NOT NULL DEFAULT 'sktm';
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'master_jenis_surat_template_key_check'
+      AND conrelid = 'public.master_jenis_surat'::regclass
+  ) THEN
+    ALTER TABLE public.master_jenis_surat
+      DROP CONSTRAINT master_jenis_surat_template_key_check;
+  END IF;
+END $$;
+ALTER TABLE public.master_jenis_surat
+  ADD CONSTRAINT master_jenis_surat_template_key_check
+  CHECK (template_key IN ('sktm','sku','skp','skd','skl','skli','skm'));
 
 -- Backfill template_key on existing rows (idempotent migration).
 -- NOTE: the column is added with DEFAULT 'sktm', so existing rows are ALREADY
 -- 'sktm' — backfill MUST match on nama_surat, not template_key IS NULL.
-UPDATE public.master_jenis_surat SET template_key = 'sktm'
-  WHERE nama_surat ILIKE '%tidak mampu%' OR nama_surat ILIKE '%sktm%';
+-- Order matters: more specific matchers (pindah / ibu) run first so the
+-- generic '%domisili%' / '%lahir%' matchers never steal them.
+UPDATE public.master_jenis_surat SET template_key = 'skp'
+  WHERE nama_surat ILIKE '%pindah domisili%' OR nama_surat ILIKE '%skp%';
+UPDATE public.master_jenis_surat SET template_key = 'skli'
+  WHERE nama_surat ILIKE '%seorang ibu%' OR nama_surat ILIKE '%skli%';
+UPDATE public.master_jenis_surat SET template_key = 'skd'
+  WHERE nama_surat ILIKE '%domisili%' AND nama_surat NOT ILIKE '%pindah%';
+UPDATE public.master_jenis_surat SET template_key = 'skl'
+  WHERE nama_surat ILIKE '%lahir%' AND nama_surat NOT ILIKE '%ibu%'
+    AND nama_surat NOT ILIKE '%seorang%';
+UPDATE public.master_jenis_surat SET template_key = 'skm'
+  WHERE nama_surat ILIKE '%meninggal%' OR nama_surat ILIKE '%skm%';
 UPDATE public.master_jenis_surat SET template_key = 'sku'
   WHERE nama_surat ILIKE '%usaha%' OR nama_surat ILIKE '%sku%';
-UPDATE public.master_jenis_surat SET template_key = 'skd'
-  WHERE nama_surat ILIKE '%domisili%' OR nama_surat ILIKE '%skd%';
+UPDATE public.master_jenis_surat SET template_key = 'sktm'
+  WHERE nama_surat ILIKE '%tidak mampu%' OR nama_surat ILIKE '%sktm%';
 
--- Rename the domisili type to match the template set (SKD).
+-- Convert the legacy 'Surat Keterangan Domisili' row → Pindah Domisili (SKP).
 UPDATE public.master_jenis_surat
-  SET nama_surat = 'Surat Keterangan Domisili (SKD)'
-  WHERE nama_surat = 'Surat Pengantar Domisili'
+  SET nama_surat = 'Surat Keterangan Pindah Domisili (SKP)',
+      template_key = 'skp',
+      kode_klasifikasi = '470'
+  WHERE (nama_surat = 'Surat Pengantar Domisili' OR nama_surat = 'Surat Keterangan Domisili (SKD)')
     AND is_active = true;
 
--- Seed the 3 MVP letter types (idempotent).
+-- Seed the 7 letter types (idempotent per template_key).
 INSERT INTO public.master_jenis_surat (nama_surat, kode_klasifikasi, template_key, is_active)
-SELECT * FROM (VALUES
-  ('Surat Keterangan Tidak Mampu (SKTM)', '470', 'sktm', true),
-  ('Surat Keterangan Usaha (SKU)',        '474', 'sku',  true),
-  ('Surat Keterangan Domisili (SKD)',     '470', 'skd',  true)
-) AS seed(nama, kode, templ, aktif)
-WHERE NOT EXISTS (SELECT 1 FROM public.master_jenis_surat);
+SELECT seed.nama, seed.kode, seed.templ, true
+FROM (VALUES
+  ('Surat Keterangan Tidak Mampu (SKTM)',      '460',   'sktm'),
+  ('Surat Keterangan Usaha (SKU)',             '593',   'sku'),
+  ('Surat Keterangan Pindah Domisili (SKP)',   '470',   'skp'),
+  ('Surat Keterangan Domisili (SKD)',          '470',   'skd'),
+  ('Surat Keterangan Lahir (SKL)',             '474.1', 'skl'),
+  ('Surat Keterangan Lahir dari Seorang Ibu',  '474.1', 'skli'),
+  ('Surat Keterangan Meninggal (SKM)',         '474.3', 'skm')
+) AS seed(nama, kode, templ)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.master_jenis_surat m
+  WHERE m.template_key = seed.templ
+);
 
 -- ---------- nomor_surat_counter (race-safe numbering per kode/tahun) ----------
 -- PRD §5.3: nomor_urut resets every year & is per kode_klasifikasi.
