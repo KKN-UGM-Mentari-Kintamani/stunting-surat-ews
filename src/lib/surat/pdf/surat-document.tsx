@@ -69,11 +69,11 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
     color: "#000000",
     backgroundColor: "#ffffff",
-    // kiri 3.5cm, atas 2.5cm, kanan 2.5cm, bawah ~2.1cm agar SKU muat 1 halaman
-    paddingTop: 71,
-    paddingBottom: 60,
-    paddingLeft: 99,
-    paddingRight: 71,
+    // kiri 2.5cm, atas 1.5cm, kanan 1.5cm, bawah 1.1cm
+    paddingTop: 43,
+    paddingBottom: 31,
+    paddingLeft: 71,
+    paddingRight: 43,
   },
   kopWrap: { flexDirection: "row", alignItems: "center", marginBottom: 2 },
   // logo ~2.33cm = 66pt, sama untuk kiri & kanan agar seimbang
@@ -119,9 +119,13 @@ const styles = StyleSheet.create({
   ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 1 },
   ttdImage: { width: 100, height: 60, objectFit: "contain", marginTop: 1 },
   kodeVerifikasi: {
+    // Paling bawah halaman, terlepas dari tinggi isi.
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 24,
     textAlign: "center",
     fontSize: 9,
-    marginTop: 2,
     color: "#444444",
   },
 });

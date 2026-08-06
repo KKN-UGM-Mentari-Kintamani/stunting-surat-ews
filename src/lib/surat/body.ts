@@ -250,8 +250,7 @@ export function buildSuratLayout(
           row("Alamat", formatAlamat(s.alamat)),
         ],
         isi: [
-          `Berdasarkan surat pernyataan dari Kepala Keluarga dan hasil verifikasi dan validasi lapangan memang benar masuk kategori keluarga tidak mampu, dan ${tujuan}.`,
-          "Apabila di kemudian hari terdapat ketidaksesuaian atau pelanggaran terhadap surat pernyataan ini, kami bersedia menerima konsekuensi sesuai ketentuan yang berlaku.",
+          `Berdasarkan surat pernyataan dari Kepala Keluarga dan hasil verifikasi dan validasi lapangan memang benar masuk kategori keluarga tidak mampu, dan ${tujuan}. Apabila di kemudian hari terdapat ketidaksesuaian atau pelanggaran terhadap surat pernyataan ini, kami bersedia menerima konsekuensi sesuai ketentuan yang berlaku.`,
           "Demikian surat pernyataan ini dibuat dengan sesungguhnya untuk dapat digunakan seperlunya.",
         ],
       };
