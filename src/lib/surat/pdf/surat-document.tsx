@@ -118,7 +118,10 @@ const styles = StyleSheet.create({
   ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 2 },
   ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2 },
   ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 1 },
-  ttdImage: { width: 100, height: 60, objectFit: "contain", marginTop: 1 },
+  ttdImage: { width: 84, height: 50, objectFit: "contain", marginTop: 1 },
+  // Stempel menimpa tanda tangan via marginTop negatif (absolute react-pdf
+  // tetap menambah tinggi layout, jadi hindari position absolute).
+  stempelImage: { width: 48, height: 48, objectFit: "contain", marginTop: -42, marginLeft: 18 },
   kodeVerifikasi: {
     // Paling bawah halaman, terlepas dari tinggi isi.
     position: "absolute",
@@ -150,6 +153,8 @@ interface Props {
   jabatanKades?: string | null;
   /** base64 data-URI of the Kades TTE image (e.g. data:image/png;base64,..) */
   tteBase64?: string | null;
+  /** base64 data-URI of the Kades stamp/cap (overlay menimpa tanda tangan). */
+  stempelBase64?: string | null;
   tanggalTerbit: Date;
   /** SKTM: purpose phrase typed by the staff at approval time. */
   tujuanSktm?: string;
@@ -165,6 +170,7 @@ export function SuratDocument({
   nipKades,
   jabatanKades,
   tteBase64,
+  stempelBase64,
   tanggalTerbit,
   tujuanSktm,
 }: Props) {
@@ -258,6 +264,8 @@ export function SuratDocument({
             <Text style={styles.tanggal}>{DESA.kota}, {fmtTanggalHariIni(tanggalTerbit)}</Text>
             <Text style={styles.ttdJabatan}>{jabatan},</Text>
             {tteBase64 && <PdfImage src={tteBase64} style={styles.ttdImage} />}
+            {/* Stempel menimpa tanda tangan */}
+            {stempelBase64 && <PdfImage src={stempelBase64} style={styles.stempelImage} />}
             <Text style={styles.ttdNama}>{namaKades}</Text>
             {nipKades && <Text style={styles.ttdNip}>NIP. {nipKades}</Text>}
           </View>

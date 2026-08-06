@@ -41,6 +41,8 @@ export interface KadesConfig {
   nip_kades: string | null;
   jabatan: string | null;
   ttd_cap_url: string | null;
+  /** Optional stamp/cap image path (overlay menimpa tanda tangan di PDF). */
+  stempel_url: string | null;
 }
 
 export interface WargaProfilData {

@@ -134,27 +134,29 @@ async function renderAndUploadPdf(
   },
 ): Promise<{ ok: false; error: string } | { ok: true; pdfPath: string; kodeVerifikasi: string }> {
   try {
-    // 1. Kades config (nama, NIP, jabatan, TTE path).
+    // 1. Kades config (nama, NIP, jabatan, TTE & stempel path).
     const { data: config } = await supabase
       .from("surat_kades_config")
-      .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
+      .select("nama_kades,nip_kades,jabatan,ttd_cap_url,stempel_url")
       .eq("id", 1)
       .maybeSingle();
 
-    // 2. TTE image from private bucket → base64 data-URI.
-    let tteBase64: string | null = null;
-    if (config?.ttd_cap_url) {
-      const service = createServiceClient();
-      const { data: tteBlob, error: tteErr } = await service.storage
+    // 2. TTE & stempel images from private bucket → base64 data-URIs.
+    const service = createServiceClient();
+    async function downloadAsBase64(path?: string | null): Promise<string | null> {
+      if (!path) return null;
+      const { data: blob, error: err } = await service.storage
         .from("surat-ttd")
-        .download(config.ttd_cap_url);
-      if (!tteErr && tteBlob) {
-        const buf = Buffer.from(await tteBlob.arrayBuffer());
-        tteBase64 = `data:image/png;base64,${buf.toString("base64")}`;
-      } else {
-        console.error("[admin/surat] TTE download failed:", tteErr?.message);
+        .download(path);
+      if (err || !blob) {
+        console.error("[admin/surat] asset download failed:", err?.message);
+        return null;
       }
+      const buf = Buffer.from(await blob.arrayBuffer());
+      return `data:image/png;base64,${buf.toString("base64")}`;
     }
+    const tteBase64 = await downloadAsBase64(config?.ttd_cap_url);
+    const stempelBase64 = await downloadAsBase64(config?.stempel_url);
 
     // 3. Kode verifikasi is auto-generated; nomor came from the admin.
     const tahun = new Date().getFullYear();
@@ -173,12 +175,12 @@ async function renderAndUploadPdf(
       nipKades: config?.nip_kades,
       jabatanKades: config?.jabatan,
       tteBase64,
+      stempelBase64,
       tujuanSktm: args.tujuanSktm,
     });
 
     // 5. Upload to private bucket.
     const pdfPath = `${tahun}/${args.kode}/${nomor.replace(/\//g, "-")}.pdf`;
-    const service = createServiceClient();
     const { error: upErr } = await service.storage
       .from("surat-pdf")
       .upload(pdfPath, pdfBuffer, {
@@ -463,6 +465,7 @@ export interface KadesConfig {
   nip_kades: string | null;
   jabatan: string | null;
   ttd_cap_url: string | null;
+  stempel_url: string | null;
 }
 
 export async function getKadesConfigAction(): Promise<ActionResult<KadesConfig | null>> {
@@ -474,7 +477,7 @@ export async function getKadesConfigAction(): Promise<ActionResult<KadesConfig |
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("surat_kades_config")
-    .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
+    .select("nama_kades,nip_kades,jabatan,ttd_cap_url,stempel_url")
     .eq("id", 1)
     .maybeSingle();
   if (error) {
@@ -489,6 +492,7 @@ export async function updateKadesConfigAction(input: {
   nipKades?: string;
   jabatan?: string;
   ttdCapUrl?: string;
+  stempelUrl?: string;
 }): Promise<ActionResult> {
   try {
     await assertAdmin();
@@ -505,6 +509,7 @@ export async function updateKadesConfigAction(input: {
       nip_kades: input.nipKades?.trim() || null,
       jabatan: input.jabatan?.trim() || "Kepala Desa",
       ttd_cap_url: input.ttdCapUrl?.trim() || null,
+      stempel_url: input.stempelUrl?.trim() || null,
     },
     { onConflict: "id" },
   );
@@ -516,14 +521,15 @@ export async function updateKadesConfigAction(input: {
   return { ok: true };
 }
 
-// ---------- TTE upload ----------
+// ---------- TTE / stempel upload ----------
 
 /**
- * Upload Kades signature/stamp to the PRIVATE 'surat-ttd' bucket.
- * Returns the storage path (stored in surat_kades_config.ttd_cap_url).
- * Compression is done client-side before upload (browser-image-compression).
+ * Upload Kades signature (tte) or stamp (stempel) to the PRIVATE 'surat-ttd'
+ * bucket. Returns the storage path (stored in surat_kades_config.ttd_cap_url /
+ * stempel_url). Compression is done client-side (browser-image-compression).
  */
-export async function uploadTteAction(
+export async function uploadAsetTtdAction(
+  jenis: "tte" | "stempel",
   formData: FormData,
 ): Promise<{ ok: false; error: string } | { ok: true; path: string }> {
   try {
@@ -543,15 +549,23 @@ export async function uploadTteAction(
     return { ok: false, error: "Ukuran gambar maksimal 2MB." };
   }
 
-  const path = `tte-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const prefix = jenis === "stempel" ? "stempel-" : "tte-";
+  const path = `${prefix}${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const supabase = createServiceClient();
   const { error } = await supabase.storage
     .from("surat-ttd")
     .upload(path, file, { upsert: false, contentType: file.type });
 
   if (error) {
-    console.error("[admin/surat] uploadTte failed:", error.message);
-    return { ok: false, error: "Gagal mengunggah TTE." };
+    console.error(`[admin/surat] uploadAsetTtd(${jenis}) failed:`, error.message);
+    return { ok: false, error: "Gagal mengunggah gambar." };
   }
   return { ok: true, path };
+}
+
+/** Backward-compatible alias for the existing UI import. */
+export async function uploadTteAction(
+  formData: FormData,
+): Promise<{ ok: false; error: string } | { ok: true; path: string }> {
+  return uploadAsetTtdAction("tte", formData);
 }

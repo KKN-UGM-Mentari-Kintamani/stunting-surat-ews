@@ -9,13 +9,14 @@ interface Config {
   nip_kades: string | null;
   jabatan: string | null;
   ttd_cap_url: string | null;
+  stempel_url: string | null;
 }
 
 export default async function ConfigPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("surat_kades_config")
-    .select("nama_kades,nip_kades,jabatan,ttd_cap_url")
+    .select("nama_kades,nip_kades,jabatan,ttd_cap_url,stempel_url")
     .eq("id", 1)
     .maybeSingle();
   return (

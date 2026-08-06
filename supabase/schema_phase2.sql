@@ -48,10 +48,14 @@ CREATE TABLE IF NOT EXISTS public.surat_kades_config (
   nama_kades     text NOT NULL,
   nip_kades      text,
   jabatan        text NOT NULL DEFAULT 'Kepala Desa',
-  -- Path in the PRIVATE 'surat-ttd' bucket (never a public URL).
+  -- Paths in the PRIVATE 'surat-ttd' bucket (never a public URL).
   ttd_cap_url    text,
+  stempel_url    text,
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
+-- Idempotent migration: stamp (cap) overlay path.
+ALTER TABLE public.surat_kades_config
+  ADD COLUMN IF NOT EXISTS stempel_url text;
 
 -- ---------- master_jenis_surat (letter types) ----------
 CREATE TABLE IF NOT EXISTS public.master_jenis_surat (
