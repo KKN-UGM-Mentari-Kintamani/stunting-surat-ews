@@ -23,6 +23,19 @@ export const DESA = {
   kota: "Songan B",
 };
 
+/** One static-line segment: a text label or a dotted leader. */
+export interface AgunanSegmen {
+  teks?: string;
+  /** Renders a dotted leader that fills the remaining line width. */
+  titik?: boolean;
+}
+
+/** One row of the static block; `indent` shifts it right under the numbering. */
+export interface AgunanBaris {
+  indent?: boolean;
+  segmen: AgunanSegmen[];
+}
+
 /** Structured layout of the letter body, driven by template_key. */
 export interface SuratLayout {
   /** Intro line before the signer block ("Yang bertanda tangan di bawah ini :"). */
@@ -33,8 +46,8 @@ export interface SuratLayout {
   identitasPemohon: Array<{ label: string; value: string }>;
   /** Body paragraphs (justified, indented). */
   isi: string[];
-  /** Verbatim static block (e.g. the SKU BRI agunan table). */
-  blokStatis?: string[];
+  /** Static block (e.g. the SKU BRI agunan table), rendered verbatim. */
+  blokStatis?: AgunanBaris[];
   /** Closing paragraph rendered AFTER the static block (e.g. SKU penutup). */
   isiPenutup?: string;
   /** Optional role line above the jabatan in the TTD block ("Yang membuat pernyataan"). */
@@ -73,18 +86,19 @@ function row(label: string, value?: string | null): { label: string; value: stri
 const PENUTUP_BAKU =
   "Demikian surat keterangan ini dibuat dengan sebenarnya agar dapat dipergunakan sebagaimana mestinya.";
 
-/** Verbatim agunan block from the SKU BRI example — kept untouched. */
-const AGUNAN_BRI = [
-  "1. Tanah................terletak di Desa.....................................................................................",
-  "    No..........................Pipil No...............Persil No..............................kelas....................... Luas",
-  "    ................M2/Are/Ha atas nama ...............................................sesuai SHM/Petuk D/ Letter",
-  "    C No................................................................................................................... Tanggal",
-  "    ...............................tinggal...................................................................................",
-  "",
-  "2. Fiducial/ Alat Rumah Tangga...........................................................................................",
-  "    a.",
-  "    b.",
-  "    c.",
+/** Agunan block from the SKU BRI example — words kept verbatim; dotted
+ * leaders render as lines that fill the full width (rata kanan-kiri). */
+const AGUNAN_BRI: AgunanBaris[] = [
+  { segmen: [{ teks: "1. Tanah" }, { titik: true }, { teks: "terletak di Desa" }, { titik: true }] },
+  { indent: true, segmen: [{ teks: "No" }, { titik: true }, { teks: "Pipil No" }, { titik: true }, { teks: "Persil No" }, { titik: true }, { teks: "kelas" }, { titik: true }, { teks: "Luas" }] },
+  { indent: true, segmen: [{ titik: true }, { teks: "M2/Are/Ha atas nama" }, { titik: true }, { teks: "sesuai SHM/Petuk D/ Letter" }] },
+  { indent: true, segmen: [{ teks: "C No" }, { titik: true }, { teks: "Tanggal" }] },
+  { indent: true, segmen: [{ titik: true }, { teks: "tinggal" }, { titik: true }] },
+  { segmen: [] },
+  { segmen: [{ teks: "2. Fiducial/ Alat Rumah Tangga" }, { titik: true }] },
+  { indent: true, segmen: [{ teks: "a." }] },
+  { indent: true, segmen: [{ teks: "b." }] },
+  { indent: true, segmen: [{ teks: "c." }] },
 ];
 
 /** Builds the full letter layout for a given letter type + snapshot. */

@@ -8,6 +8,13 @@
  * Village identity is fixed for Desa Songan B (Template_Surat_Desa_SonganB.md).
  *
  * Design §9 deliberately deviates from web tokens for legal documents.
+ *
+ * Layout per user's request (matches the original village letters):
+ *   - logo kop kiri & kanan ~2.75cm, margin kiri 3.5cm, lainnya 2.5cm
+ *   - font 12pt, line-height 1.15, isi justify, tabel identitas menjorok
+ *   - judul + nomor surat center, line-height 1
+ *   - TTD kanan bawah tetapi teks rata kiri; tanggal & jabatan line-height 1
+ *   - blok agunan BRI: dotted leaders mengisi penuh (rata kanan-kiri)
  */
 import {
   Document,
@@ -43,56 +50,77 @@ Font.register({
   ],
 });
 
+// Kop logos: react-pdf resolves string src via url.parse, which mangles
+// Windows absolute paths (treats "D:\..." as a remote URL → fetch fails, logo
+// missing). Embed as base64 data-URIs instead — the same pattern that already
+// works for the TTE image. Logos are in public/ so they ship in the bundle.
+function toDataUri(filePath: string, mime: string): string {
+  const buf = fs.readFileSync(filePath);
+  return `data:${mime};base64,${buf.toString("base64")}`;
+}
+const LOGO_KIRI = toDataUri(path.join(process.cwd(), "public", "kop-logo-kiri.png"), "image/png");
+const LOGO_KANAN = toDataUri(path.join(process.cwd(), "public", "kop-logo-kanan.jpg"), "image/jpeg");
+
+// 1cm = 28.3465pt
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Liberation Serif",
     fontSize: 12,
-    lineHeight: 1.5,
+    lineHeight: 1.15,
     color: "#000000",
     backgroundColor: "#ffffff",
-    paddingTop: 40,
-    paddingBottom: 40,
-    paddingLeft: 50,
-    paddingRight: 50,
+    // kiri 3.5cm, atas/kanan/bawah 2.5cm
+    paddingTop: 71,
+    paddingBottom: 71,
+    paddingLeft: 99,
+    paddingRight: 71,
   },
-  kopWrap: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  kopLogo: { width: 72, height: 72, objectFit: "contain" },
-  kopLogoKan: { width: 56, height: 56, objectFit: "contain" },
+  kopWrap: { flexDirection: "row", alignItems: "center", marginBottom: 2 },
+  // logo ~2.75cm = 78pt
+  kopLogo: { width: 78, height: 78, objectFit: "contain" },
+  kopLogoKan: { width: 62, height: 62, objectFit: "contain" },
   kopTeks: { flex: 1, paddingHorizontal: 8 },
-  kopTitle: { fontSize: 14, fontWeight: 700, textAlign: "center", marginBottom: 2 },
-  kopSub: { fontSize: 12, fontWeight: 700, textAlign: "center", marginBottom: 2 },
-  kopWebsite: { fontSize: 9, textAlign: "center", marginTop: 2 },
+  kopTitle: { fontSize: 13, fontWeight: 700, textAlign: "center", lineHeight: 1.1 },
+  kopSub: { fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.1 },
   separator: {
     borderTopWidth: 3,
     borderBottomWidth: 1,
     borderTopColor: "#000000",
     borderBottomColor: "#000000",
-    marginBottom: 16,
+    marginTop: 2,
+    marginBottom: 8,
   },
-  nomorSurat: { textAlign: "center", marginBottom: 18, fontSize: 12 },
-  nomorSuratUnderline: { textDecoration: "underline" },
-  isi: { fontSize: 12, lineHeight: 1.6 },
-  intro: { textAlign: "justify", marginTop: 10, marginBottom: 6 },
-  tabel: { width: "100%", marginTop: 2, marginBottom: 8 },
-  tabelRow: { flexDirection: "row", marginBottom: 4 },
+  // Judul & nomor surat: center, line-height 1
+  judulSurat: { textAlign: "center", fontSize: 13, fontWeight: 700, textDecoration: "underline", lineHeight: 1, marginBottom: 2 },
+  nomorSurat: { textAlign: "center", fontSize: 12, lineHeight: 1, marginBottom: 8 },
+  isi: { fontSize: 12, lineHeight: 1.15 },
+  intro: { textAlign: "justify", marginTop: 4, marginBottom: 2 },
+  // Tabel identitas sedikit menjorok ke kanan
+  tabel: { width: "100%", marginTop: 1, marginBottom: 4, paddingLeft: 28 },
+  tabelRow: { flexDirection: "row", marginBottom: 2, lineHeight: 1.1 },
   tabelK: { width: 160 },
   tabelV: { width: 12 },
   tabelD: { flex: 1 },
-  paragraf: { textAlign: "justify", marginBottom: 10 },
-  paragrafIndent: { textAlign: "justify", marginBottom: 10, textIndent: 24 },
-  blokStatis: { marginBottom: 8 },
-  blokStatisLine: { fontSize: 11, marginBottom: 2 },
-  tanggal: { textAlign: "right", marginTop: 24, fontSize: 11 },
-  ttd: { marginTop: 4, alignItems: "flex-end" },
-  ttdTeks: { textAlign: "right" },
-  ttdRole: { textAlign: "right", marginTop: 8 },
-  ttdNama: { textAlign: "right", fontWeight: 700, textDecoration: "underline", marginTop: 4 },
-  ttdNip: { textAlign: "right", fontSize: 10, marginTop: 2 },
-  ttdImage: { width: 110, height: 70, objectFit: "contain", marginTop: 4 },
+  paragraf: { textAlign: "justify", marginBottom: 5 },
+  paragrafIndent: { textAlign: "justify", marginBottom: 5, textIndent: 24 },
+  blokStatis: { marginTop: 1, marginBottom: 4, paddingLeft: 28 },
+  blokStatisRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 2 },
+  blokStatisText: { fontSize: 12, flexShrink: 0 },
+  // Dotted leader mengisi penuh lebar baris → rata kanan-kiri, tanpa ruang kosong
+  blokStatisDot: { flex: 1, borderBottomWidth: 1, borderBottomStyle: "dotted", marginBottom: 2, marginLeft: 2, marginRight: 2 },
+  // TTD: blok di kanan bawah, teks di dalamnya rata kiri
+  ttdWrap: { marginTop: 12, alignItems: "flex-end" },
+  ttdBlok: { width: 240, alignItems: "flex-start" },
+  tanggal: { fontSize: 12, lineHeight: 1, textAlign: "left" },
+  ttdRole: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 4 },
+  ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 3 },
+  ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2 },
+  ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 2 },
+  ttdImage: { width: 110, height: 70, objectFit: "contain", marginTop: 2 },
   kodeVerifikasi: {
     textAlign: "center",
     fontSize: 9,
-    marginTop: 24,
+    marginTop: 8,
     color: "#444444",
   },
 });
@@ -143,23 +171,20 @@ export function SuratDocument({
       <Page size="A4" style={styles.page}>
         {/* Kop surat */}
         <View style={styles.kopWrap}>
-          <PdfImage src={path.join(process.cwd(), "public", "kop-logo-kiri.png")} style={styles.kopLogo} />
+          <PdfImage src={LOGO_KIRI} style={styles.kopLogo} />
           <View style={styles.kopTeks}>
             <Text style={styles.kopTitle}>PEMERINTAH KABUPATEN BANGLI</Text>
             <Text style={styles.kopSub}>KECAMATAN KINTAMANI</Text>
             <Text style={styles.kopTitle}>DESA SONGAN B</Text>
-            <Text style={styles.kopWebsite}>Website: {DESA.website}</Text>
           </View>
-          <PdfImage src={path.join(process.cwd(), "public", "kop-logo-kanan.jpg")} style={styles.kopLogoKan} />
+          <PdfImage src={LOGO_KANAN} style={styles.kopLogoKan} />
         </View>
         <View style={styles.separator} />
 
         {/* Judul & nomor */}
+        <Text style={styles.judulSurat}>{namaSurat}</Text>
         <Text style={styles.nomorSurat}>
-          <Text style={styles.nomorSuratUnderline}>{namaSurat}</Text>
-        </Text>
-        <Text style={styles.nomorSurat}>
-          Nomor : <Text style={styles.nomorSuratUnderline}>{nomorSurat}</Text>
+          Nomor : {nomorSurat}
         </Text>
 
         {/* Isi */}
@@ -197,8 +222,22 @@ export function SuratDocument({
           ))}
           {layout.blokStatis && (
             <View style={styles.blokStatis}>
-              {layout.blokStatis.map((line, i) => (
-                <Text key={i} style={styles.blokStatisLine}>{line || "\u00A0"}</Text>
+              {layout.blokStatis.map((baris, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.blokStatisRow,
+                    ...(baris.indent ? [{ marginLeft: 24 }] : []),
+                  ]}
+                >
+                  {baris.segmen.map((seg, j) =>
+                    seg.titik ? (
+                      <View key={j} style={styles.blokStatisDot} />
+                    ) : (
+                      <Text key={j} style={styles.blokStatisText}>{seg.teks}</Text>
+                    ),
+                  )}
+                </View>
               ))}
             </View>
           )}
@@ -207,16 +246,16 @@ export function SuratDocument({
           )}
         </View>
 
-        {/* Tanggal + TTE */}
-        <View style={styles.tanggal}>
-          <Text>{DESA.kota}, {fmtTanggalHariIni(tanggalTerbit)}</Text>
-        </View>
-        <View style={styles.ttd}>
-          {layout.ttdRoleLine && <Text style={styles.ttdRole}>{layout.ttdRoleLine}</Text>}
-          <Text style={styles.ttdTeks}>{jabatan},</Text>
-          {tteBase64 && <PdfImage src={tteBase64} style={styles.ttdImage} />}
-          <Text style={styles.ttdNama}>{namaKades}</Text>
-          {nipKades && <Text style={styles.ttdNip}>NIP. {nipKades}</Text>}
+        {/* Tanggal + TTE — blok di kanan bawah, teks rata kiri */}
+        <View style={styles.ttdWrap}>
+          <View style={styles.ttdBlok}>
+            <Text style={styles.tanggal}>{DESA.kota}, {fmtTanggalHariIni(tanggalTerbit)}</Text>
+            {layout.ttdRoleLine && <Text style={styles.ttdRole}>{layout.ttdRoleLine}</Text>}
+            <Text style={styles.ttdJabatan}>{jabatan},</Text>
+            {tteBase64 && <PdfImage src={tteBase64} style={styles.ttdImage} />}
+            <Text style={styles.ttdNama}>{namaKades}</Text>
+            {nipKades && <Text style={styles.ttdNip}>NIP. {nipKades}</Text>}
+          </View>
         </View>
 
         {/* Kode verifikasi */}

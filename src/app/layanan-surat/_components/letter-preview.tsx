@@ -5,6 +5,10 @@
  * nomor (those are added only after approval). Mirrors the final PDF template
  * (surat-document.tsx): same kop, parties, body (buildSuratLayout) and TTD
  * block, so the citizen sees exactly what the document will look like.
+ *
+ * Layout mirrors the PDF: logo kop kiri/kanan ~2.75cm, margin kiri 3.5cm,
+ * font 12pt, line-height 1.15, isi justify, tabel identitas menjorok,
+ * judul+nomor center, TTD kanan bawah rata kiri, blok agunan dotted mengisi.
  */
 import Image from "next/image";
 
@@ -37,8 +41,8 @@ export function LetterPreview({
   const layout = buildSuratLayout(templateKey, s, { tujuanSktm: tujuanSktmOverride });
 
   return (
-    <div className="rounded-md border border-border bg-white p-6 text-foreground text-[13px]">
-      <p className="mb-2 text-[12px] italic text-muted-foreground">
+    <div className="rounded-md border border-border bg-white p-6 text-foreground text-[12px] leading-[1.15]">
+      <p className="mb-2 text-[12px] italic leading-normal text-muted-foreground">
         Pratinjau — tanpa nomor surat &amp; tanda tangan. Nomor &amp; TTE akan
         ditambahkan otomatis setelah admin menyetujui.
       </p>
@@ -46,29 +50,29 @@ export function LetterPreview({
       {/* Kop surat */}
       <div className="relative border-t-2 border-black pt-3">
         <div className="absolute top-3 left-0">
-          <Image src="/kop-logo-kiri.png" alt="Logo Kiri" width={48} height={48} className="rounded" />
+          {/* 2.75cm ≈ 104px */}
+          <Image src="/kop-logo-kiri.png" alt="Logo Kiri" width={104} height={104} className="rounded" />
         </div>
-        <h2 className="text-center text-[14px] font-bold uppercase tracking-wide">
+        <h2 className="text-center text-[13px] font-bold uppercase tracking-wide leading-tight">
           Pemerintah Kabupaten Bangli
         </h2>
-        <p className="text-center text-[12px] font-bold uppercase">Kecamatan Kintamani</p>
-        <p className="text-center text-[14px] font-bold uppercase">Desa Songan B</p>
-        <p className="text-center text-[11px]">Website: {DESA.website}</p>
+        <p className="text-center text-[12px] font-bold uppercase leading-tight">Kecamatan Kintamani</p>
+        <p className="text-center text-[13px] font-bold uppercase leading-tight">Desa Songan B</p>
         <div className="absolute top-3 right-0">
-          <Image src="/kop-logo-kanan.jpg" alt="Logo Kanan" width={40} height={40} className="rounded" />
+          <Image src="/kop-logo-kanan.jpg" alt="Logo Kanan" width={80} height={80} className="rounded" />
         </div>
         <div className="mt-2 border-t-[3px] border-b border-black" />
       </div>
 
       {/* Judul & nomor */}
-      <p className="mt-5 text-center font-semibold underline">{namaSurat}</p>
-      <p className="mt-1 text-center">
-        Nomor: <span className="underline">{nomorSurat?.trim() ? nomorSurat.trim() : "—"}</span>
+      <p className="mt-4 text-center text-[13px] font-bold underline leading-none">{namaSurat}</p>
+      <p className="mt-1 text-center leading-none">
+        Nomor: {nomorSurat?.trim() ? nomorSurat.trim() : "—"}
       </p>
 
       {/* Pihak pertama (penandatangan) */}
-      <p className="mt-5">{layout.introPenandatangan}</p>
-      <table className="mt-1 w-full text-[13px]">
+      <p className="mt-4 text-justify">{layout.introPenandatangan}</p>
+      <table className="mt-1 w-full pl-7 text-[12px]">
         <tbody>
           <tr><td className="w-40 align-top">Nama</td><td className="w-2">:</td><td><strong>{namaKades}</strong></td></tr>
           <tr><td className="align-top">Jabatan</td><td>:</td><td>{jabatan}</td></tr>
@@ -76,8 +80,8 @@ export function LetterPreview({
       </table>
 
       {/* Pihak kedua (pemohon) */}
-      <p className="mt-4">{layout.introPemohon}</p>
-      <table className="mt-1 w-full text-[13px]">
+      <p className="mt-3 text-justify">{layout.introPemohon}</p>
+      <table className="mt-1 w-full pl-7 text-[12px]">
         <tbody>
           {layout.identitasPemohon.map((r, i) => (
             <tr key={i}><td className="w-40 align-top">{r.label}</td><td className="w-2">:</td><td>{r.value}</td></tr>
@@ -87,27 +91,37 @@ export function LetterPreview({
 
       {/* Isi dinamis per jenis surat */}
       {layout.isi.map((t, i) => (
-        <p key={i} className="mt-3 indent-8 text-justify">{t}</p>
+        <p key={i} className="mt-2.5 indent-8 text-justify">{t}</p>
       ))}
       {layout.blokStatis && (
-        <div className="mt-3 text-justify text-[12px] leading-snug">
-          {layout.blokStatis.map((line, i) => (
-            <p key={i} className="min-h-4 whitespace-pre-wrap">{line || "\u00A0"}</p>
+        <div className="mt-2 pl-7">
+          {layout.blokStatis.map((baris, i) => (
+            <div key={i} className={`flex items-end gap-1 ${baris.indent ? "ml-6" : ""}`}>
+              {baris.segmen.map((seg, j) =>
+                seg.titik ? (
+                  <span key={j} className="flex-1 border-b border-dotted border-black" />
+                ) : (
+                  <span key={j} className="shrink-0">{seg.teks}</span>
+                ),
+              )}
+            </div>
           ))}
         </div>
       )}
       {layout.isiPenutup && (
-        <p className="mt-3 indent-8 text-justify">{layout.isiPenutup}</p>
+        <p className="mt-2.5 indent-8 text-justify">{layout.isiPenutup}</p>
       )}
 
-      {/* Tanda tangan */}
-      <div className="mt-6 text-right">
-        <p>{DESA.kota}, {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
-        {layout.ttdRoleLine && <p className="mt-1">{layout.ttdRoleLine}</p>}
-        <p className="mt-1">{jabatan},</p>
-        <p className="mt-1 font-semibold">{namaKades}</p>
-        <div className="mt-6 font-bold underline">[Tanda tangan &amp; stempel]</div>
-        {nip && <p className="text-[11px]">NIP. {nip}</p>}
+      {/* Tanda tangan — blok di kanan bawah, teks rata kiri */}
+      <div className="mt-6 flex justify-end">
+        <div className="w-[220px] text-left">
+          <p className="leading-none">{DESA.kota}, {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
+          {layout.ttdRoleLine && <p className="mt-1.5 leading-none">{layout.ttdRoleLine}</p>}
+          <p className="mt-1 leading-none">{jabatan},</p>
+          <p className="mt-1 font-bold underline leading-none">{namaKades}</p>
+          <div className="mt-4 font-bold underline">[Tanda tangan &amp; stempel]</div>
+          {nip && <p className="mt-1 text-[11px] leading-none">NIP. {nip}</p>}
+        </div>
       </div>
     </div>
   );
