@@ -81,7 +81,7 @@ export const FIELD_DEFS: Record<TemplateKey, SuratFieldDef[]> = {
       key: "tempat_meninggal",
       label: "Tempat Meninggal",
       required: true,
-      placeholder: "Contoh: Rumahnya di Banjar Ulundanu",
+      placeholder: "Contoh: Rumah",
     },
     {
       key: "sebab_meninggal",

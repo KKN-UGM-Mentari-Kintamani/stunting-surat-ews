@@ -38,7 +38,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-border bg-primary/10">
-      <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 gap-10 px-5 py-12 md:grid-cols-[1.4fr_1fr_1fr] md:px-8">
+      <div className="mx-auto grid w-full max-w-[1120px] grid-cols-1 gap-10 px-5 py-8 md:grid-cols-[1.4fr_1fr_1fr] md:px-8">
         {/* Kiri: brand + deskripsi + tim KKN */}
         <div className="flex flex-col gap-4">
           <BrandLogo size="md" />
@@ -123,9 +123,7 @@ export function SiteFooter() {
       {/* Copyright — di tengah, melintasi seluruh footer */}
       <div className="border-t border-border/70 px-5 py-5">
         <p className="text-center text-[13px] leading-relaxed text-muted-foreground">
-          © 2026 KKN-PPM UGM Mentari Kintamani. All rights reserved.
-          <br />
-          Designed &amp; Developed by Tim KKN.
+          © 2026 KKN-PPM UGM Mentari Kintamani. All rights reserved. Designed &amp; Developed by Tim KKN.
         </p>
       </div>
     </footer>

@@ -73,7 +73,7 @@ export function Navbar({ user }: { user: NavbarUser | null }) {
           className="flex items-center rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           aria-label="Sigap Desa — beranda"
         >
-          <BrandLogo size="sm" />
+          <BrandLogo size="md" />
         </Link>
 
         {/* Right: main menu + account block / Masuk. */}

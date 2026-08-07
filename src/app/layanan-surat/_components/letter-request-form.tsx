@@ -318,7 +318,7 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                 </Field>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 mt-2">
                   <Field>
-                    <FieldLabel htmlFor="f-telepon" className={labelClass}>Nomor Telepon</FieldLabel>
+                    <FieldLabel htmlFor="f-telepon" className={labelClass}>Nomor HP Pemohon</FieldLabel>
                     <Input id="f-telepon" value={telepon} onChange={(e) => setTelepon(e.target.value)}
                       inputMode="tel" placeholder="Contoh: 081234567890" />
                     {/* <FieldDescription className="text-[13px] text-muted-foreground">
