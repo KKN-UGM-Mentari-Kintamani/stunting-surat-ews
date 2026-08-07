@@ -28,7 +28,6 @@ export const metadata: Metadata = {
   },
   description:
     "Kalkulator deteksi dini stunting berbasis standar WHO 2006, pusat edukasi gizi & MPASI, dan layanan administrasi desa.",
-  icons: [{ rel: "icon", url: "/logo-sigap.png" }],
 };
 
 export const viewport: Viewport = {
