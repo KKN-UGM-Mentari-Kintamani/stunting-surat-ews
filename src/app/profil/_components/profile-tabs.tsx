@@ -1,7 +1,6 @@
 /* src/app/profil/_components/profile-tabs.tsx
- * Modular Tabs (PRD §4.2C reserved Phase 2 "Riwayat Surat" tab; Master Doc §2).
- * A feature flag controls visibility — flipping it on in Phase 2 needs no JSX
- * edit, mirroring the data-driven pattern used in the navbar's NAV_ITEMS.
+ * Modular Tabs (PRD §4.2C). Dua tab: "Riwayat Surat" (default, di kiri) dan
+ * "Lihat Anak" (daftar/profil anak, di kanan). Data-driven via TABS array.
  */
 import { BookHeart, Mail } from "lucide-react";
 
@@ -22,18 +21,19 @@ interface TabDef {
   enabled: boolean;
 }
 
+// Urutan: Riwayat Surat di kiri (default), Lihat Anak di kanan.
 const TABS: TabDef[] = [
-  {
-    value: "growh",
-    label: "Riwayat Pertumbuhan Anak",
-    Icon: BookHeart,
-    enabled: true,
-  },
   {
     value: "letters",
     label: "Riwayat Surat",
     Icon: Mail,
     enabled: LETTER_TAB_ENABLED,
+  },
+  {
+    value: "growh",
+    label: "Lihat Anak",
+    Icon: BookHeart,
+    enabled: true,
   },
 ];
 
@@ -41,7 +41,7 @@ export function ProfileTabs({ children }: { children: React.ReactNode }) {
   const visible = TABS.filter((t) => t.enabled);
 
   // When only one tab is active there's nothing to switch between, but we keep
-  // the Tabs shell so Phase 2's addition is a flag flip — not a layout rework.
+  // the Tabs shell so additions are a flag flip — not a layout rework.
   if (visible.length === 1) {
     return (
       <Tabs defaultValue={visible[0].value} className="w-full">
@@ -61,7 +61,7 @@ export function ProfileTabs({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Tabs defaultValue={visible[0].value} className="w-full">
+    <Tabs defaultValue="letters" className="w-full">
       <TabsList>
         {visible.map((t) => (
           <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
@@ -70,11 +70,11 @@ export function ProfileTabs({ children }: { children: React.ReactNode }) {
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value="growh" className="mt-6">
-        {children}
-      </TabsContent>
       <TabsContent value="letters" className="mt-6">
         <LetterHistory />
+      </TabsContent>
+      <TabsContent value="growh" className="mt-6">
+        {children}
       </TabsContent>
     </Tabs>
   );

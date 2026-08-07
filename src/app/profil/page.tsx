@@ -1,8 +1,7 @@
 /* src/app/profil/page.tsx
- * "Profil Saya" (PRD §4.2C). Gender-neutral label per PRD revision. This
- * page serves Phase 1 (growth history); a modular Tabs slot is reserved for
- * Phase 2's "Riwayat Surat" tab (Master Doc §2). The page integrates with the
- * global layout (BottomTabBar / Navbar) automatically via the root layout.
+ * "Profil Saya" (PRD §4.2C). Satu card profil gabungan (identitas + data warga
+ * + jumlah anak), tabs "Riwayat Surat" (default) & "Lihat Anak", dan menu
+ * Keamanan Akun di paling bawah.
  */
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
@@ -14,7 +13,6 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { ChildrenSection } from "@/app/profil/_components/children-section";
 import { ConsentGate } from "@/app/profil/_components/consent-gate";
-import { ProfileSummary } from "@/app/profil/_components/profile-summary";
 import { ProfileTabs } from "@/app/profil/_components/profile-tabs";
 import { ProfilSkeleton } from "@/app/profil/_components/profil-skeleton";
 import { getProfileData } from "@/app/profil/_queries";
@@ -49,39 +47,28 @@ export default async function ProfilPage({
 async function ProfilContent({ autoAddNew }: { autoAddNew: boolean }) {
   const data = await getProfileData();
   const consented = data.user.consent_given_at !== null;
+  const childCount = data.children.filter((c) => c.inRange).length;
 
   return (
     <>
-      <ProfileSummary
-        nama={data.user.nama_lengkap}
-        email={data.user.email}
-        childCount={data.children.filter((c) => c.inRange).length}
-        suratProfilLengkap={!!data.wargaProfil}
-      />
-
       {!consented && <ConsentGate />}
 
       {consented && (
         <>
-          {data.wargaProfil ? (
-            <WargaProfileCard profil={data.wargaProfil} />
-          ) : (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 p-4">
-              <p className="text-[15px] text-muted-foreground">
-                Data warga untuk layanan surat belum dilengkapi.
-              </p>
-              <Button asChild variant="default" size="sm">
-                <a href="/layanan-surat">Lengkapi</a>
-              </Button>
-            </div>
-          )}
-          <AccountSecurity email={data.user.email} />
+          <WargaProfileCard
+            profil={data.wargaProfil}
+            namaAkun={data.user.nama_lengkap}
+            email={data.user.email}
+            childCount={childCount}
+          />
           <ProfileTabs>
             <>
               <AutoOpenAddChild autoOpen={autoAddNew} />
               <ChildrenSection items={data.children} />
             </>
           </ProfileTabs>
+          {/* Keamanan Akun selalu di paling bawah */}
+          <AccountSecurity email={data.user.email} />
         </>
       )}
     </>

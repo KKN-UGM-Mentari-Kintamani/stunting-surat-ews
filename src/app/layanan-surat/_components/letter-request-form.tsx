@@ -62,6 +62,12 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   const [jenisId, setJenisId] = useState("");
   const [nama, setNama] = useState(profil.nama);
   const [nik, setNik] = useState(profil.nik);
+  const [tempatLahir, setTempatLahir] = useState(profil.tempat_lahir);
+  const [tanggalLahir, setTanggalLahir] = useState(profil.tanggal_lahir);
+  const [jenisKelamin, setJenisKelamin] = useState<"L" | "P">(profil.jenis_kelamin);
+  const [agama, setAgama] = useState(profil.agama);
+  const [pekerjaan, setPekerjaan] = useState(profil.pekerjaan);
+  const [alamat, setAlamat] = useState(profil.alamat);
   const [dataKhusus, setDataKhusus] = useState<Record<string, string>>({});
   // Admin consideration inputs (shown to the verifier).
   const [tujuan, setTujuan] = useState("");
@@ -82,6 +88,14 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
   function handlePreview() {
     if (!jenisId || !nama.trim() || nik.length !== 16) {
       setError("Pilih jenis surat dan lengkapi NIK (16 digit) serta nama.");
+      return;
+    }
+    if (!tempatLahir.trim() || !tanggalLahir.trim()) {
+      setError("Lengkapi tempat dan tanggal lahir pemohon.");
+      return;
+    }
+    if (!agama.trim() || !pekerjaan.trim() || !alamat.trim()) {
+      setError("Lengkapi agama, pekerjaan, dan alamat pemohon.");
       return;
     }
     if (!tujuan.trim()) {
@@ -111,12 +125,15 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
     if (submittingRef.current) return; // guard double-submit
     setError(null);
     submittingRef.current = true;
-    const snapshot = buildSnapshot({ ...profil, nama, nik }, {
-      dataKhusus,
-      tujuanPermohonan: tujuan.trim(),
-      nomorTelepon: telepon.trim() || undefined,
-      pernyataanBenar: pernyataan,
-    });
+    const snapshot = buildSnapshot(
+      { ...profil, nama, nik, tempat_lahir: tempatLahir, tanggal_lahir: tanggalLahir, jenis_kelamin: jenisKelamin, agama, pekerjaan, alamat },
+      {
+        dataKhusus,
+        tujuanPermohonan: tujuan.trim(),
+        nomorTelepon: telepon.trim() || undefined,
+        pernyataanBenar: pernyataan,
+      },
+    );
     start(async () => {
       try {
         const res = await submitPermohonanAction(jenisId, snapshot);
@@ -134,6 +151,12 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
         setJenisId("");
         setNama(profil.nama);
         setNik(profil.nik);
+        setTempatLahir(profil.tempat_lahir);
+        setTanggalLahir(profil.tanggal_lahir);
+        setJenisKelamin(profil.jenis_kelamin);
+        setAgama(profil.agama);
+        setPekerjaan(profil.pekerjaan);
+        setAlamat(profil.alamat);
         setDataKhusus({});
         setTujuan("");
         setTelepon("");
@@ -189,6 +212,53 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                   <FieldLabel htmlFor="f-nik" className={labelClass}>NIK <RequiredMark /></FieldLabel>
                   <Input id="f-nik" value={nik} onChange={(e) => setNik(e.target.value)}
                     maxLength={16} inputMode="numeric" placeholder="16 digit" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="f-tempat-lahir" className={labelClass}>Tempat Lahir <RequiredMark /></FieldLabel>
+                  <Input id="f-tempat-lahir" value={tempatLahir} onChange={(e) => setTempatLahir(e.target.value)}
+                    placeholder="Contoh: Denpasar" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="f-tanggal-lahir" className={labelClass}>Tanggal Lahir <RequiredMark /></FieldLabel>
+                  <Input id="f-tanggal-lahir" type="date"
+                    max={new Date().toISOString().slice(0, 10)}
+                    value={tanggalLahir} onChange={(e) => setTanggalLahir(e.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="f-jk" className={labelClass}>Jenis Kelamin <RequiredMark /></FieldLabel>
+                  <Select value={jenisKelamin} onValueChange={(v) => setJenisKelamin(v as "L" | "P")}>
+                    <SelectTrigger id="f-jk" className="w-full"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                    <SelectContent><SelectGroup>
+                      <SelectItem value="L">Laki-laki</SelectItem>
+                      <SelectItem value="P">Perempuan</SelectItem>
+                    </SelectGroup></SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="f-agama" className={labelClass}>Agama <RequiredMark /></FieldLabel>
+                  <Select value={agama} onValueChange={setAgama}>
+                    <SelectTrigger id="f-agama" className="w-full"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                    <SelectContent><SelectGroup>
+                      {["Islam","Kristen","Katolik","Hindu","Buddha","Konghucu"].map((a) => (
+                        <SelectItem key={a} value={a}>{a}</SelectItem>
+                      ))}
+                    </SelectGroup></SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="f-pekerjaan" className={labelClass}>Pekerjaan <RequiredMark /></FieldLabel>
+                  <Input id="f-pekerjaan" value={pekerjaan} onChange={(e) => setPekerjaan(e.target.value)}
+                    placeholder="Contoh: Petani" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="f-alamat" className={labelClass}>Alamat (Nama Banjar) <RequiredMark /></FieldLabel>
+                  <Input id="f-alamat" value={alamat} onChange={(e) => setAlamat(e.target.value)}
+                    placeholder="Contoh: Br. Dalem" />
+                  <FieldDescription className="text-[13px] text-muted-foreground">
+                    Cukup isi nama Banjar (mis. &quot;Br. Dalem&quot;). Sisanya (Desa
+                    Songan B, Kecamatan Kintamani, Kabupaten Bangli) ditambahkan
+                    otomatis pada surat.
+                  </FieldDescription>
                 </Field>
               </div>
 
@@ -289,6 +359,11 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
                 !jenisId ||
                 !nama.trim() ||
                 nik.length !== 16 ||
+                !tempatLahir.trim() ||
+                !tanggalLahir.trim() ||
+                !agama.trim() ||
+                !pekerjaan.trim() ||
+                !alamat.trim() ||
                 !tujuan.trim() ||
                 !pernyataan ||
                 (templateKey ? requiredKeys(templateKey) : []).some((k) => !(dataKhusus[k] ?? "").trim())
@@ -307,12 +382,15 @@ export function LetterRequestForm({ profil, jenisSuratList, kades, onSubmitted }
               namaSurat={selectedType?.nama_surat ?? "—"}
               templateKey={selectedType?.template_key ?? "sktm"}
               kades={kades}
-              snapshot={buildSnapshot({ ...profil, nama, nik }, {
-                dataKhusus,
-                tujuanPermohonan: tujuan.trim(),
-                nomorTelepon: telepon.trim() || undefined,
-                pernyataanBenar: pernyataan,
-              })}
+              snapshot={buildSnapshot(
+                { ...profil, nama, nik, tempat_lahir: tempatLahir, tanggal_lahir: tanggalLahir, jenis_kelamin: jenisKelamin, agama, pekerjaan, alamat },
+                {
+                  dataKhusus,
+                  tujuanPermohonan: tujuan.trim(),
+                  nomorTelepon: telepon.trim() || undefined,
+                  pernyataanBenar: pernyataan,
+                },
+              )}
             />
 
             {error && (
