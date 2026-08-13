@@ -10,6 +10,7 @@ import { useState } from "react";
 import { WargaProfilForm } from "@/app/layanan-surat/_components/warga-profil-form";
 import { LetterRequestForm } from "@/app/layanan-surat/_components/letter-request-form";
 import { LetterHistory } from "@/app/layanan-surat/_components/letter-history";
+import { ConsentGate } from "@/components/consent/consent-gate";
 import type { KadesConfig, TemplateKey, WargaProfilData } from "@/lib/surat/types";
 
 interface JenisSurat {
@@ -20,7 +21,6 @@ interface JenisSurat {
 }
 
 interface Props {
-  userId: string;
   initialProfil: WargaProfilData | null;
   consented: boolean;
   jenisSuratList: JenisSurat[];
@@ -28,7 +28,6 @@ interface Props {
 }
 
 export function LayananSuratClient({
-  userId,
   initialProfil,
   consented,
   jenisSuratList,
@@ -39,14 +38,8 @@ export function LayananSuratClient({
 
   if (!consented) {
     return (
-      <div className="flex flex-col items-center gap-4 py-10 text-center">
-        <p className="max-w-md text-[15px] leading-relaxed text-muted-foreground">
-          Anda belum menyetujui pengumpulan data. Buka halaman{" "}
-          <a href="/profil" className="font-medium text-secondary underline">
-            Profil Saya
-          </a>{" "}
-          untuk memberikan persetujuan terlebih dahulu.
-        </p>
+      <div className="mx-auto w-full max-w-2xl">
+        <ConsentGate />
       </div>
     );
   }

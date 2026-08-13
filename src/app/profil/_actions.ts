@@ -55,6 +55,7 @@ export async function acceptConsentAction(): Promise<ActionResult> {
     return { ok: false, error: "Gagal menyimpan persetujuan. Coba lagi." };
   }
   revalidatePath("/profil");
+  revalidatePath("/layanan-surat");
   return { ok: true };
 }
 

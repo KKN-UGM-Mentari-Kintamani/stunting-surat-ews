@@ -1,12 +1,15 @@
 "use client";
 
-/* src/app/profil/_components/consent-gate.tsx
- * PDP Law consent gate (PRD §4.4). Until the user explicitly accepts, the
- * child-management UI is hidden and only this explanatory card appears. The
- * checkbox is never pre-checked (PDP requirement), and the warning is shown
- * via the shadcn Alert component, not custom styled divs (skill rule).
+/* src/components/consent/consent-gate.tsx
+ * PDP Law consent gate (PRD §4.4, Master Doc §4). Until the user explicitly
+ * accepts, features that need personal data stay hidden and only this card
+ * appears. Shared by /profil and /layanan-surat so the consent is recorded
+ * exactly once (users.consent_given_at). The checkbox is never pre-checked
+ * (PDP requirement). `onAccepted` is called after the DB write succeeds so
+ * the host page can refresh and continue its flow.
  */
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 import { acceptConsentAction } from "@/app/profil/_actions";
@@ -20,7 +23,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 
-export function ConsentGate() {
+export function ConsentGate({ onAccepted }: { onAccepted?: () => void }) {
+  const router = useRouter();
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -29,7 +33,12 @@ export function ConsentGate() {
     setError(null);
     startTransition(async () => {
       const res = await acceptConsentAction();
-      if (!res.ok) setError(res.error);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      onAccepted?.();
+      router.refresh();
     });
   }
 
@@ -38,11 +47,12 @@ export function ConsentGate() {
       <ShieldCheck aria-hidden />
       <AlertTitle>Persetujuan pengumpulan data</AlertTitle>
       <AlertDescription>
-        Sebelum mendaftarkan anak dan menyimpan riwayat pengukuran, Anda perlu
-        menyetujui pengumpulan &amp; penggunaan data. Data mencakup profil anak
-        (nama, tanggal lahir) dan hasil pengukuran; dipakai untuk pemantauan
-        tumbuh kembang dan — pada layanan surat nanti — NIK/KK. Data tidak
-        dibagikan ke pihak lain dan dapat diminta dihapus melalui perangkat desa.
+        Sebelum mengakses layanan yang menyimpan data pribadi, Anda perlu
+        menyetujui pengumpulan &amp; penggunaan data. Data mencakup profil
+        anak (nama, tanggal lahir), hasil pengukuran, serta untuk layanan
+        surat: NIK/KK dan alamat. Data dipakai untuk pemantauan tumbuh kembang
+        dan administrasi desa, tidak dibagikan ke pihak lain, dan dapat diminta
+        dihapus melalui perangkat desa.
       </AlertDescription>
 
       <div className="mt-4 flex flex-col gap-3">

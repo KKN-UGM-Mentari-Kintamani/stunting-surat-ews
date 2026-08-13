@@ -3,9 +3,9 @@
 /* src/components/auth/login-form.tsx
  * Client side of /login. One unified form:
  *   - Email + Kata Sandi fields + tombol "Masuk".
- *   - Di bawahnya tombol "Masuk dengan Google". Saat ditekan, jika pengguna
- *     belum pernah menyetujui (perangkat ini), muncul dialog persetujuan singkat
- *     (PDP Law §4.4) sebelum mengalihkan ke Google.
+ *   - Di bawahnya tombol "Masuk dengan Google". PDP consent dipindah ke
+ *     ConsentGate (komponen bersama) yang muncul di halaman berfitur pribadi
+ *     (/profil, /layanan-surat) — tidak lagi di dialog login.
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -26,8 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -38,8 +37,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const CONSENT_KEY = "portal-consent-v1";
 
 function GoogleMark() {
   return (
@@ -78,8 +75,6 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [googlePending, setGooglePending] = useState(false);
-  const [consentOpen, setConsentOpen] = useState(false);
-  const [consent, setConsent] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotPending, setForgotPending] = useState(false);
@@ -99,20 +94,6 @@ export function LoginForm({
 
   function handleGoogleClick() {
     setError(null);
-    // Only gate consent when this device hasn't agreed before (new user path).
-    if (typeof window !== "undefined" && !window.localStorage.getItem(CONSENT_KEY)) {
-      setConsent(false);
-      setConsentOpen(true);
-      return;
-    }
-    proceedWithGoogle();
-  }
-
-  function proceedWithGoogle() {
-    setConsentOpen(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(CONSENT_KEY, "1");
-    }
     setGooglePending(true);
     startTransition(async () => {
       await signInWithGoogleAction(next);
@@ -241,47 +222,6 @@ export function LoginForm({
           — kalkulator stunting dapat dipakai tanpa masuk.
         </p>
       </CardContent>
-
-      {/* Consent dialog (new-user / sign-up path via Google) */}
-      <Dialog open={consentOpen} onOpenChange={setConsentOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="size-5" strokeWidth={1.5} aria-hidden />
-              Persetujuan Data
-            </DialogTitle>
-            <DialogDescription>
-              Sebelum masuk dengan Google, kami mohon persetujuan Anda.
-            </DialogDescription>
-          </DialogHeader>
-          <Field orientation="horizontal" className="items-start">
-            <Checkbox
-              id="consent"
-              checked={consent}
-              onCheckedChange={(v) => setConsent(v === true)}
-              className="mt-1"
-            />
-            <div className="flex flex-col gap-1">
-              <label htmlFor="consent" className="text-[15px] font-medium leading-snug">
-                Saya menyetujui pengumpulan &amp; penggunaan data
-              </label>
-              <FieldDescription className="text-[13px] leading-relaxed">
-                Data Anda dipakai untuk pemantauan tumbuh kembang anak dan
-                administrasi desa, tidak dibagikan ke pihak lain, dan dapat
-                diminta dihapus melalui perangkat desa.
-              </FieldDescription>
-            </div>
-          </Field>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConsentOpen(false)}>
-              Batal
-            </Button>
-            <Button disabled={!consent} onClick={proceedWithGoogle}>
-              Lanjut ke Google
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Forgot password dialog */}
       <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>

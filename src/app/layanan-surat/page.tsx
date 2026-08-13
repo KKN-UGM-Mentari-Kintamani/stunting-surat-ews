@@ -63,7 +63,6 @@ export default async function LayananSuratPage() {
         Layanan Surat
       </h1>
       <LayananSuratClient
-        userId={user.id}
         initialProfil={profil}
         consented={consented}
         jenisSuratList={jenisSuratList}
