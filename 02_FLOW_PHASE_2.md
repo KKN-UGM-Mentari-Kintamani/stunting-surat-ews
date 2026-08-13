@@ -29,7 +29,7 @@
 | Next.js app (UI + server actions) | Vercel | Satu deployment |
 | PDF render (`renderToBuffer`) | Vercel server action | react-pdf, ~100-200ms |
 | Postgres + Storage | Supabase Free | DB + bucket private |
-| Cron retensi PDF 3 hari | Vercel Cron (Pro) atau Supabase pg_cron | Hapus PDF kedaluwarsa |
+| Cron retensi PDF 7 hari | Vercel Cron (Hobby: 1×/hari) — `/api/cron/cleanup-pdf` | Hapus PDF kedaluwarsa |
 
 **Konfigurasi react-pdf di Vercel:**
 - `next.config.ts`: `serverExternalPackages: ["@react-pdf/renderer"]` (fontkit WASM).
@@ -40,28 +40,28 @@
 
 - **DB PostgreSQL** (free 500MB): `warga_profil`, `permohonan_surat`, `master_jenis_surat`, `surat_kades_config`.
 - **Storage buckets:**
-  - `surat-pdf` — **PRIVATE**: PDF final (**sementara — lihat §2.3**, dihapus otomatis 3 hari setelah disetujui).
+  - `surat-pdf` — **PRIVATE**: PDF final (**sementara — lihat §2.3**, dihapus otomatis 7 hari setelah disetujui).
   - `surat-ttd` — **PRIVATE**: PNG TTE Kades (hanya diakses server).
   - `thumbnails` — **PUBLIC** (dari Phase 1): thumbnail artikel edukasi.
-- **Kapasitas dengan retensi 3 hari:** rata-rata PDF aktif ≈ (surat disetujui per 3 hari) × 0.5MB. Dengan 50 user × 5 surat/tahun ≈ 250 surat/tahun → rata-rata ~2 PDF aktif/tiap 3 hari ≈ **±1-2MB saja dalam storage** — sangat hemat.
+- **Kapasitas dengan retensi 7 hari:** rata-rata PDF aktif ≈ (surat disetujui per 7 hari) × 0.5MB. Dengan 50 user × 5 surat/tahun ≈ 250 surat/tahun → rata-rata ~3-4 PDF aktif/tiap 7 hari ≈ **±2MB saja dalam storage** — sangat hemat.
 
 ### 2.3. Prinsip data & retensi PDF
 
 - Data & PDF disimpan di Supabase (managed) — matinya server lokal tidak menghilangkan data.
 - PDF dirender dari `data_isian_snapshot` (Snapshot pattern, Master Doc §3), bukan profil live.
 - `pdf_final_url` menyimpan **path storage**; download lewat **signed URL** (expired ±1 jam) — tidak pernah URL permanen publik.
-- **[REVISION] Retensi PDF = 3 hari:** 3 hari setelah `status = 'disetujui'`, PDF **dihapus otomatis** dari bucket `surat-pdf` dan `pdf_final_url` dikosongkan.
+- **[REVISION] Retensi PDF = 7 hari:** 7 hari setelah `status = 'disetujui'`, PDF **dihapus otomatis** dari bucket `surat-pdf` dan `pdf_final_url` dikosongkan. Pengaman tambahan: endpoint unduh juga menolak surat yang `disetujui_at`-nya sudah lewat 7 hari (meski file fisik belum terhapus — defense-in-depth).
   - **Yang TIDAK hilang:** `data_isian_snapshot` (JSONB) tetap tersimpan di `permohonan_surat` — data surat abadi.
   - **Verifikasi tetap berfungsi:** `/verifikasi/[kode]` membaca dari `permohonan_surat` (jenis, nomor, tanggal, status, nama ter-mask), **bukan** dari file PDF.
-  - Setelah lewat 3 hari, tombol unduh warga diganti pesan: *"Masa unduh telah berakhir. Silakan hubungi kantor desa."*
+  - Setelah lewat 7 hari, tombol unduh warga diganti pesan: *"Masa unduh telah berakhir. Silakan hubungi kantor desa."*
   - **Catatan kepatuhan:** ini menyimpang dari Master Doc §4 (dokumen legal idealnya dipertahankan utk kearsipan). Kompromi: snapshot data tetap ada; hanya artefak PDF yang dibatasi. Warga disarankan menyimpan salinan PDF sebelum masa unduh berakhir.
-- Right-to-erasure: anonymize profil; PDF sudah otomatis dibersihkan dalam 3 hari.
+- Right-to-erasure: anonymize profil; PDF sudah otomatis dibersihkan dalam 7 hari.
 
 ### 2.4. Mekanisme pembersihan PDF (cleanup job)
 
 - Kolom baru `disetujui_at` (timestamptz) di `permohonan_surat`, diisi saat status → `disetujui`.
-- **Cron harian** (Supabase pg_cron atau script di VPS):
-  1. SELECT `permohonan_surat` WHERE `status = 'disetujui'` AND `disetujui_at < now() - interval '3 days'` AND `pdf_final_url IS NOT NULL`.
+- **Cron harian** (Vercel Cron — Hobby mendukung 1×/hari, presisi ±59 menit; alternatif manual: `supabase/cleanup_pdf.sql`):
+  1. SELECT `permohonan_surat` WHERE `status = 'disetujui'` AND `disetujui_at < now() - interval '7 days'` AND `pdf_final_url IS NOT NULL`.
   2. Hapus object dari bucket `surat-pdf` (via service role).
   3. UPDATE `pdf_final_url = NULL` pada row tsb.
 - Idempoten & aman dijalankan ulang (guard `pdf_final_url IS NOT NULL`).
@@ -111,12 +111,12 @@
 |---|---|---|
 | `menunggu` | Badge biru-grey "Menunggu" | Menunggu admin |
 | `revisi` | Badge gold "Perlu Revisi" + catatan admin | **Edit & ajukan ulang** (permohonan yang sama, ID tetap) |
-| `disetujui` | Badge hijau "Disetujui" | **Download PDF final** (berisi kode verifikasi) — tersedia **3 hari** sejak disetujui |
+| `disetujui` | Badge hijau "Disetujui" | **Download PDF final** (berisi kode verifikasi) — tersedia **7 hari** sejak disetujui |
 | `ditolak` | Badge merah "Ditolak" + alasan | Tidak bisa edit; buat permohonan baru |
 
 **Case A4a:** Revisi → resubmit: `status` kembali `menunggu`, `catatan_admin` di-reset, riwayat tetap satu entri.
 **Case A4b:** Download PDF via signed URL; tombol disabled jika status belum `disetujui`.
-**Case A4c (masa unduh berakhir):** jika `pdf_final_url` sudah dikosongkan (PDF dihapus setelah 3 hari) → tombol unduh diganti teks *"Masa unduh telah berakhir. Silakan hubungi kantor desa."* Status badge tetap "Disetujui"; verifikasi keaslian tetap berfungsi via `/verifikasi/[kode]`.
+**Case A4c (masa unduh berakhir):** jika `pdf_final_url` sudah dikosongkan (PDF dihapus setelah 7 hari) → tombol unduh diganti teks *"Masa unduh telah berakhir. Silakan hubungi kantor desa."* Status badge tetap "Disetujui"; verifikasi keaslian tetap berfungsi via `/verifikasi/[kode]`.
 
 ---
 
@@ -152,7 +152,7 @@ Urutan **satu unit kerja** di server action (Vercel); jika gagal di tengah → `
 3. **Sisipkan TTE Kades** — baca dari bucket PRIVATE `surat-ttd` via service client → base64.
 4. **Render PDF via `@react-pdf/renderer`** (`renderToBuffer`) — data dari `data_isian_snapshot`, font Liberation Serif.
 5. **Upload PDF** ke bucket PRIVATE `surat-pdf`.
-6. **Simpan** `pdf_final_url` + `status = 'disetujui'` + `admin_verifikator_id` + `disetujui_at = now()` (dipakai untuk retensi 3 hari).
+6. **Simpan** `pdf_final_url` + `status = 'disetujui'` + `admin_verifikator_id` + `disetujui_at = now()` (dipakai untuk retensi 7 hari).
 
 **Case B3a (render/upload gagal):** `processing_at` dibersihkan → status kembali `menunggu`, nomor & kode yang sudah dibuat **dibuang** (tidak dipakai ulang). Admin dapat pesan error, bisa retry.
 **Case B3b (double click):** tombol disabled selama loading → aman.
@@ -226,8 +226,8 @@ Urutan **satu unit kerja** di server action (Vercel); jika gagal di tengah → `
 - `data_isian_snapshot` (JSONB — snapshot identitas + field khusus saat submit)
 - `status` (ENUM: `menunggu`, `revisi`, `disetujui`, `ditolak`)
 - `catatan_admin` (text, nullable — wajib saat `revisi`/`ditolak`)
-- `pdf_final_url` (path storage PDF final; **dikosongkan setelah 3 hari**)
-- `disetujui_at` (timestamptz, nullable — diisi saat approve; dasar retensi 3 hari)
+- `pdf_final_url` (path storage PDF final; **dikosongkan setelah 7 hari**)
+- `disetujui_at` (timestamptz, nullable — diisi saat approve; dasar retensi 7 hari)
 - `deleted_at` (soft delete, Master Doc §3)
 
 ### 7.5. RLS (PRD §6)
@@ -257,7 +257,7 @@ Urutan **satu unit kerja** di server action (Vercel); jika gagal di tengah → `
 | 10 | TTE belum dikonfigurasi | Tolak approve dengan pesan |
 | 11 | Nomor surat race (2 admin approve bersamaan) | `SELECT ... FOR UPDATE` per kode_klasifikasi/tahun |
 | 12 | NIK sudah punya akun saat walk-in | Opsi auto-link ke akun warga |
-| 13 | PDF sudah lewat 3 hari (file dihapus) | `pdf_final_url` NULL → tombol unduh diganti "hubungi kantor desa"; verifikasi tetap jalan |
+| 13 | PDF sudah lewat 7 hari (file dihapus) | `pdf_final_url` NULL → tombol unduh diganti "hubungi kantor desa"; verifikasi tetap jalan |
 | 14 | Cleanup job jalan berulang | Idempoten — guard `pdf_final_url IS NOT NULL` |
 
 ---
@@ -272,7 +272,7 @@ Urutan **satu unit kerja** di server action (Vercel); jika gagal di tengah → `
 - [ ] react-pdf setup (`@react-pdf/renderer` + `serverExternalPackages` + font di `public/fonts`)
 - [ ] Snapshot pattern di semua generate dokumen
 - [ ] TTE di bucket private; PDF di bucket private; signed URL untuk download
-- [ ] Kolom `disetujui_at` + cleanup job retensi PDF 3 hari (pg_cron / Vercel Cron)
+- [ ] Kolom `disetujui_at` + cleanup job retensi PDF 7 hari (Vercel Cron + cek umur di endpoint unduh + fallback `supabase/cleanup_pdf.sql`)
 
 ---
 

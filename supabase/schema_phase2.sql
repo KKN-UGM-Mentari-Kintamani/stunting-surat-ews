@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS public.permohonan_surat (
   nomor_surat_final   text UNIQUE,
   kode_verifikasi     text UNIQUE,
   pdf_final_url       text,
-  -- Filled when status -> 'disetujui'; basis for 3-day PDF retention.
+  -- Filled when status -> 'disetujui'; basis for 7-day PDF retention.
   disetujui_at        timestamptz NULL,
   created_at          timestamptz NOT NULL DEFAULT now(),
   updated_at          timestamptz NOT NULL DEFAULT now(),

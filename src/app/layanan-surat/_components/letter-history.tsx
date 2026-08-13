@@ -6,7 +6,7 @@
  *   - disetujui → "Unduh PDF"
  *   - ditolak   → "Lihat Catatan" (dialog berisi alasan admin)
  *   - menunggu  → menunggu proses
- * PDF yang sudah lewat 3 hari → pesan "hubungi kantor desa".
+ * PDF yang sudah lewat 7 hari → pesan "hubungi kantor desa".
  * Status "revisi" telah dihapus dari alur (admin menolak dgn komentar).
  */
 import { useEffect, useState, useTransition } from "react";

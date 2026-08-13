@@ -156,7 +156,9 @@ export async function getMyLettersAction(): Promise<ActionResult<MyLetterRow[]>>
  * from the PRIVATE surat-pdf bucket.
  *  - warga  → only their own letters
  *  - admin_desa → any letter (for the admin queue / walk-in service)
- * Returns null if PDF has been purged (3-day retention) or not yet approved.
+ * Returns null if PDF has been purged (7-day retention), not yet approved, or
+ * the retention window has passed (defense-in-depth even if the cron cleanup
+ * hasn't run yet).
  */
 export async function downloadLetterPdfAction(
   permohonanId: string,
@@ -176,13 +178,20 @@ export async function downloadLetterPdfAction(
   // Verify access + that PDF still exists.
   let query = supabase
     .from("permohonan_surat")
-    .select("pdf_final_url, status, user_id")
+    .select("pdf_final_url, status, user_id, disetujui_at")
     .eq("id", permohonanId)
     .is("deleted_at", null);
   if (!isAdmin) query = query.eq("user_id", userId); // warga: own only
   const { data: row, error } = await query.maybeSingle();
   if (error || !row) return { ok: false, error: "Surat tidak ditemukan." };
   if (row.status !== "disetujui") return { ok: false, error: "Surat belum disetujui." };
+
+  // Retention policy (7 days from approval): refuse even if the PDF file still
+  // exists physically — the cron cleanup is best-effort, so the age check is
+  // the hard gate that guarantees the UI's "Masa unduh telah berakhir".
+  if (row.disetujui_at && new Date(row.disetujui_at) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) {
+    return { ok: true, data: { url: null, expired: true } };
+  }
   if (!row.pdf_final_url) {
     return { ok: true, data: { url: null, expired: true } };
   }
