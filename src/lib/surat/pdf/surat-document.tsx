@@ -125,7 +125,9 @@ const styles = StyleSheet.create({
   ttdImage: { width: 84, height: 50, objectFit: "contain", marginTop: 1 },
   // Stempel lebih besar, menimpa tanda tangan serta jabatan/nama di bawahnya
   // (marginTop negatif; absolute react-pdf tetap menambah tinggi layout).
-  stempelImage: { width: 72, height: 72, objectFit: "contain", marginTop: -72, marginLeft: 0 },
+  // marginLeft negatif menggeser stempel ke kiri sehingga bagian kanan stempel
+  // beririsan dengan bagian kiri tanda tangan — tidak menyatu di titik yang sama.
+  stempelImage: { width: 72, height: 72, objectFit: "contain", marginTop: -72, marginLeft: -36 },
   kodeVerifikasi: {
     // Paling bawah halaman, terlepas dari tinggi isi.
     position: "absolute",
