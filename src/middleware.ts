@@ -56,7 +56,7 @@ function matchRule(pathname: string): RouteRule | null {
   return null;
 }
 
-function buildClient(req: NextRequest) {
+function buildClient(req: NextRequest, response: NextResponse) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -64,11 +64,29 @@ function buildClient(req: NextRequest) {
       cookies: {
         getAll() { return req.cookies.getAll(); },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Keep the downstream request (RSC's createClient) in sync.
+            req.cookies.set(name, value);
+            // Crucially, write onto the RESPONSE so the refreshed session
+            // cookies reach the browser as Set-Cookie. Without this, the
+            // browser keeps sending the already-rotated refresh token →
+            // "Invalid Refresh Token: Already Used" on the next request.
+            response.cookies.set(name, value, options);
+          });
         },
       },
     },
   );
+}
+
+/**
+ * Copies any session cookies written during this request onto a redirect /
+ * response we are about to return, so a refresh isn't lost when the request
+ * ends in a redirect instead of the plain NextResponse.next().
+ */
+function withSessionCookies(target: NextResponse, source: NextResponse): NextResponse {
+  source.cookies.getAll().forEach(({ name, value }) => target.cookies.set(name, value));
+  return target;
 }
 
 async function fetchRole(
@@ -90,7 +108,10 @@ async function fetchRole(
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  const supabase = buildClient(req);
+  // Create the response first and pass it to buildClient so refreshed session
+  // cookies are written onto it (and reach the browser as Set-Cookie).
+  const response = NextResponse.next({ request: { headers: req.headers } });
+  const supabase = buildClient(req, response);
   const { data: { user }, error } = await supabase.auth.getUser();
   const isAuthed = !error && !!user;
 
@@ -101,33 +122,36 @@ export async function middleware(req: NextRequest) {
       const role = await fetchRole(user.id, supabase);
       const dash = roleDashboard(role as Role);
       if (dash) {
-        return NextResponse.redirect(new URL(dash, req.url));
+        return withSessionCookies(NextResponse.redirect(new URL(dash, req.url)), response);
       }
     }
-    return NextResponse.next();
+    return response;
   }
 
   // 2) Protected routes (route permission matrix).
   const rule = matchRule(pathname);
-  if (!rule) return NextResponse.next();
+  if (!rule) return response;
 
   if (!isAuthed || !user) {
     const url = new URL('/login', req.url);
     url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
+    return withSessionCookies(NextResponse.redirect(url), response);
   }
 
   const role = await fetchRole(user.id, supabase);
   if (!role || !rule.roles.includes(role)) {
     // Authenticated but unauthorized → send to home (avoid revealing route existence
     // to lower-privilege users; safer than an explicit 403 for an MVP).
-    return NextResponse.redirect(new URL('/', req.url));
+    return withSessionCookies(NextResponse.redirect(new URL('/', req.url)), response);
   }
 
   // Re-attach the (possibly refreshed) cookies to the downstream request so
   // RSC's server.ts createClient() reads the same fresh session.
   const requestHeaders = new Headers(req.headers);
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  return withSessionCookies(
+    NextResponse.next({ request: { headers: requestHeaders } }),
+    response,
+  );
 }
 
 // Only run middleware on protected prefixes + the citizen home/education pages
