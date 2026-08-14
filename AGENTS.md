@@ -11,7 +11,7 @@
 
 ## 2. Coding Standards & Practices
 
-- **Tech Stack Adherence:** Strictly use **Next.js (App Router), Tailwind CSS, shadcn/ui, and Supabase** (PostgreSQL). For PDF generation, strictly use **Puppeteer** (run as async jobs, not blocking). For charts, use **Chart.js** (optimized with decimation).
+- **Tech Stack Adherence:** Strictly use **Next.js (App Router), Tailwind CSS, shadcn/ui, and Supabase** (PostgreSQL). For PDF generation, strictly use **`@react-pdf/renderer`** (rendered in-process in a Vercel server action — NOT Puppeteer/VPS). For charts, use **Chart.js** (optimized with decimation).
     
 - **Defensive Programming:** Always assume bad input. Implement strict input validation and handle edge cases (e.g., WHO LMS calculator limits 0-60 months).
     
@@ -36,7 +36,7 @@
 
 - Read the user's prompt carefully.
     
-- Check related core project files: `01_PRD_PHASE_1.md`, `02_PRD_PHASE_2.md`, `00_MASTER_CROSS_PHASE_CONSISTENCY.md`, and the specific code file being modified.
+- Check related core project files: `01_PRD_PHASE_1.md`, `02_PHASE_2_LAYANAN_SURAT.md`, `00_MASTER_CROSS_PHASE_CONSISTENCY.md`, and the specific code file being modified.
     
 - If there's ambiguity in the instructions, DO NOT guess. Ask the user for clarification before writing code.
     

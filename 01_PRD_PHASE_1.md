@@ -4,6 +4,8 @@
 
 **Document Version:** 4.0 (Revision: Cross-Phase Role Consistency, Personal Data Compliance, LMS Boundary Validation)
 
+> **Status: COMPLETED — historical reference.** Phase 1 has been fully built. This document describes the decisions at the time of Phase 1 and is kept for history/context; for the live cross-phase decisions refer to `00_MASTER_CROSS_PHASE_CONSISTENCY.md`, for the (implemented) letter module refer to `02_PHASE_2_LAYANAN_SURAT.md`.
+
 > **Mandatory reference:** This document is linked to `00_MASTER_CROSS_PHASE_CONSISTENCY.md`. The Role, Navigation, and Security sections below are synchronized excerpts with the master document — if there are changes, the master document is the source of truth.
 
 ## 1. Executive Summary
@@ -117,6 +119,8 @@ When a citizen registers for the first time (or when first accessing features re
 2. Save `consent_given_at` (timestamp) in the `users` table.
 3. Provide a mechanism (at minimum: contact village admin for MVP) for citizens wishing to delete/export their personal data — see Master Doc §4.
 
+> **[Superseded — implementation note]** As built, consent is collected via a single shared `ConsentGate` component shown inline on `/layanan-surat` and `/profil` (recorded in `users.consent_given_at`), not in the login dialog. See `02_PHASE_2_LAYANAN_SURAT.md` §4.2.
+
 ## 5. Technical Specification & Architecture (Tech Stack)
 
 ### 5.1. Core Technology
@@ -195,7 +199,7 @@ Marketing strategy does not only rely on *offline* socialization, but also the i
 
 ## 8. Future Phases Roadmap (Out of Scope Phase 1)
 
-- **Phase 2 (Letter Service System):** Activating the `admin_desa` role which has been reserved in the enum since Phase 1 (not adding new columns/enums), adding the letter administration *table* (Suket, Cover Letter), and *approval dashboard* at `/admin/surat`. See Phase 2 PRD and `00_MASTER_CROSS_PHASE_CONSISTENCY.md`.
+- **Phase 2 (Letter Service System):** **[COMPLETED — see `02_PHASE_2_LAYANAN_SURAT.md`]** Activating the `admin_desa` role which has been reserved in the enum since Phase 1 (not adding new columns/enums), adding the letter administration *table* (Suket, Cover Letter), and *approval dashboard* at `/admin/surat`.
 - **Phase 3 (EWS Dashboard):** Addition of public disaster mitigation notification features without *user* data integration.
 
 ---

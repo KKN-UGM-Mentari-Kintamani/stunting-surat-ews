@@ -19,9 +19,9 @@ role ENUM ('warga', 'kader_kesehatan', 'admin_desa')
 |**Role**|**Active Since**|**Description**|
 |`warga` (citizen)|Phase 1|General public, access to public features & personal data|
 |`kader_kesehatan` (health cadre)|Phase 1|Midwives/Posyandu Cadres, access to education module & village nutrition data|
-|`admin_desa` (village admin)|Phase 2 (_reserved_ since Phase 1)|Village officials, access to letter module & Village Head configuration|
+|`admin_desa` (village admin)|Phase 2 (**implemented**; reserved since Phase 1)|Village officials, access to letter module & Village Head configuration|
 
-> **Important Note:** The `role` column and its enum were fully created during the Phase 1 migration to avoid a risky `ALTER TYPE` when Phase 2 is released. The `admin_desa` value is simply not assigned to any user until Phase 2 is active — it is not added as an afterthought.
+> **Important Note:** The `role` column and its enum were fully created during the Phase 1 migration to avoid a risky `ALTER TYPE` when Phase 2 is released. The `admin_desa` value was simply not assigned to any user until Phase 2 became active — it was not added as an afterthought. Phase 2 (Letter Service) is now **implemented**; `admin_desa` accounts are activated via `supabase/upgrade_admin_desa.sql`.
 
 ### Route Permission Matrix
 
@@ -48,7 +48,7 @@ The "Letter Service" menu is **integrated into the main navbar** alongside the s
     
 3. Education & MPASI Center
     
-4. **Letter Service** _(new — appears once Phase 2 is active)_
+4. **Letter Service** _(active since Phase 2)_
     
 5. Auth/Profile → dropdown: **"My Profile"** (label changed from "Mother's Dashboard" to be gender-neutral, consistent with the term "warga" used throughout the system, and avoiding mixing English terms like "User"), "Logout". *Implementasi: "Profil Saya" tampil di dropdown akun (tidak sebagai link menu utama) — keputusan iterasi UI.*
     
@@ -75,9 +75,11 @@ The "Letter Service" menu is **integrated into the main navbar** alongside the s
 
 Because the system stores child health data (specific category) and NIK/KK (personal data), the following provisions apply across all phases:
 
-- **Explicit consent**: A consent checkbox for data collection & usage during Progressive Profiling/initial registration, not implicit assumption.
+- **Explicit consent**: A consent checkbox for data collection & usage during Progressive Profiling/initial registration, not implicit assumption. *[Implementation note: a single shared `ConsentGate` component records `users.consent_given_at` once, shown inline on `/layanan-surat` & `/profil` — see `02_PHASE_2_LAYANAN_SURAT.md` §4.2.]*
     
 - **Data retention**: Child measurement data & letter data are retained as long as the account is active; if the account is deleted, the data is _anonymized_ (not completely wiped) for village aggregate statistics purposes, except for legal documents (letters) which must be retained according to village archiving regulations.
+    
+    > **Recorded deviation (Phase 2):** the **final PDF artifact** is retained for only **7 days** after approval (storage-driven, free-tier friendly), then auto-deleted by a daily cron while `pdf_final_url` is nulled. The **snapshot data** (`data_isian_snapshot` JSONB) is kept indefinitely, and authenticity verification `/verifikasi/[kode]` continues to work from the DB. Details & rationale: `02_PHASE_2_LAYANAN_SURAT.md` §5.3.
     
 - **Right to erasure (Right to be Forgotten) / data access**: Citizens can request the deletion/export of their personal data through the village admin (manual process for MVP, self-service form in future phases).
     
