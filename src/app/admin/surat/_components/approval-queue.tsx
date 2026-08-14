@@ -49,6 +49,11 @@ const FILTERS = [
   { value: "ditolak", label: "Ditolak" },
 ];
 
+// Client-side pagination (desa-scale data, full fetch once).
+const PAGE_SIZE = 20;
+// Konsisten dengan retensi 7 hari di downloadLetterPdfAction & cron cleanup.
+const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
 function getSnap(r: Record<string, unknown>, key: string): string {
   return (r[key] as string) ?? "—";
 }
@@ -59,17 +64,28 @@ function fmtTgl(v: string): string {
   });
 }
 
+/** Surat disetujui yang sudah melewati masa unduh 7 hari (tombol PDF nonaktif). */
+function isExpired(item: QueueItem): boolean {
+  if (item.status !== "disetujui" || !item.disetujui_at) return false;
+  return Date.now() - new Date(item.disetujui_at).getTime() > RETENTION_MS;
+}
+
 export function ApprovalQueue({ items: initialItems, kades }: Props) {
   const [items, setItems] = useState<QueueItem[]>(initialItems);
   const [filter, setFilter] = useState("semua");
+  const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pdfPending, setPdfPending] = useState<string | null>(null);
-  const [isPending, start] = useTransition();
+  const [, start] = useTransition();
 
   const filtered = filter === "semua"
     ? items
     : items.filter((i) => i.status === filter);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const openItem = items.find((i) => i.id === openId) ?? null;
 
@@ -81,6 +97,10 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
 
   function handleOpenPdf(id: string, item: QueueItem) {
     if (item.status !== "disetujui" || !item.pdf_final_url) return;
+    if (isExpired(item)) {
+      setError("Masa unduh telah berakhir. PDF hanya tersedia 7 hari sejak disetujui.");
+      return;
+    }
     setPdfPending(id);
     setError(null);
     start(async () => {
@@ -111,6 +131,14 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
         </p>
       </div> */}
 
+      {/* Retensi 7 hari — info kebijakan yang selalu tampil */}
+      <Alert>
+        <AlertDescription>
+          PDF surat yang disetujui hanya tersedia 7 hari sejak tanggal persetujuan.
+          Setelah itu masa unduh berakhir dan berkas dihapus otomatis.
+        </AlertDescription>
+      </Alert>
+
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -120,7 +148,7 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
       {/* Status filter */}
       <div className="flex items-center gap-3">
         <span className="text-[14px] text-muted-foreground">Status:</span>
-        <Select value={filter} onValueChange={setFilter}>
+        <Select value={filter} onValueChange={(v) => { setFilter(v); setPage(1); }}>
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
@@ -155,13 +183,14 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((item, idx) => {
+              {paged.map((item, idx) => {
                 const s = item.data_isian_snapshot;
-                const isApproved = item.status === "disetujui" && !!item.pdf_final_url;
+                const expired = isExpired(item);
+                const isApproved = item.status === "disetujui" && !!item.pdf_final_url && !expired;
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="tabular-data text-muted-foreground">
-                      {idx + 1}
+                      {(currentPage - 1) * PAGE_SIZE + idx + 1}
                     </TableCell>
                     <TableCell className="font-medium">
                       {getSnap(s, "nama")}
@@ -212,6 +241,44 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination + catatan retensi 7 hari */}
+      {filtered.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[13px] text-muted-foreground">
+              Menampilkan{" "}
+              {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, filtered.length)} dari {filtered.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Sebelumnya
+              </Button>
+              <span className="tabular-data text-[13px] text-muted-foreground">
+                Hal {currentPage}/{pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Berikutnya
+              </Button>
+            </div>
+          </div>
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            Catatan: PDF hanya dapat diunduh selama 7 hari sejak disetujui. Baris
+            dengan tombol unduh nonaktif telah melewati masa unduh.
+          </p>
         </div>
       )}
 
