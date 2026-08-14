@@ -77,7 +77,7 @@ export async function approveAction(
   permohonanId: string,
   nomorSurat: string,
   tujuanSktm?: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<ApproveData>> {
   let adminId: string;
   try {
     adminId = await assertAdmin();
@@ -217,6 +217,24 @@ async function renderAndUploadPdf(
 }
 
 /**
+ * Data yang dihasilkan saat surat disetujui — dikembalikan ke client agar
+ * baris antrian bisa langsung di-update (tombol PDF aktif tanpa reload).
+ */
+export interface ApproveData {
+  status: "disetujui";
+  nomor_surat_final: string;
+  kode_verifikasi: string;
+  pdf_final_url: string;
+  disetujui_at: string;
+}
+
+/** Data hasil tolak — catatan admin untuk tampil di baris antrian. */
+export interface RejectData {
+  status: "ditolak";
+  catatan_admin: string;
+}
+
+/**
  * Renders the approved letter to PDF (react-pdf), uploads to the private
  * `surat-pdf` bucket, sets the manually-entered nomor + auto kode verifikasi,
  * and marks the letter as disetujui. Runs entirely on Vercel — no VPS.
@@ -226,7 +244,7 @@ async function renderAndApprove(
   nomorSurat: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
   tujuanSktm?: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<ApproveData>> {
   try {
     // 1. Load permohonan + jenis surat + snapshot.
     const { data: perm, error: permErr } = await supabase
@@ -270,6 +288,7 @@ async function renderAndApprove(
     if (!rendered.ok) return rendered;
 
     // 2. Mark disetujui with the manually-entered nomor.
+    const disetujuiAt = new Date().toISOString();
     const { error: updErr } = await supabase
       .from("permohonan_surat")
       .update({
@@ -280,7 +299,7 @@ async function renderAndApprove(
         // Persist the approved purpose back into the snapshot (immutability of
         // the published letter, not of the original request).
         ...(snapshotFinal !== snapshot ? { data_isian_snapshot: snapshotFinal } : {}),
-        disetujui_at: new Date().toISOString(),
+        disetujui_at: disetujuiAt,
         processing_at: null,
       })
       .eq("id", permohonanId);
@@ -292,12 +311,21 @@ async function renderAndApprove(
       }
       return { ok: false, error: `Gagal menyetujui: ${updErr.message}` };
     }
+
+    return {
+      ok: true,
+      data: {
+        status: "disetujui",
+        nomor_surat_final: nomor,
+        kode_verifikasi: rendered.kodeVerifikasi,
+        pdf_final_url: rendered.pdfPath,
+        disetujui_at: disetujuiAt,
+      },
+    };
   } catch (err) {
     console.error("[admin/surat] renderAndApprove failed:", err);
     return { ok: false, error: "Gagal menerbitkan surat. Coba lagi." };
   }
-
-  return { ok: true };
 }
 
 /** Poll helper for the admin UI during PDF rendering. */
@@ -330,7 +358,7 @@ export async function getLetterStatusAction(
 
 // ---------- Reject ----------
 
-export async function rejectAction(permohonanId: string, alasan: string): Promise<ActionResult> {
+export async function rejectAction(permohonanId: string, alasan: string): Promise<ActionResult<RejectData>> {
   try {
     await assertAdmin();
   } catch (err) {
@@ -350,7 +378,7 @@ export async function rejectAction(permohonanId: string, alasan: string): Promis
     return { ok: false, error: "Gagal menolak permohonan." };
   }
   revalidatePath("/admin/surat");
-  return { ok: true };
+  return { ok: true, data: { status: "ditolak", catatan_admin: alasan.trim() } };
 }
 
 /**
@@ -365,7 +393,7 @@ export async function submitAksiAction(
   catatan?: string,
   nomorSurat?: string,
   tujuanSktm?: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<ApproveData | RejectData>> {
   if (aksi === "setuju") {
     return approveAction(permohonanId, nomorSurat ?? "", tujuanSktm);
   }

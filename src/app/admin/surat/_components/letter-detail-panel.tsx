@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { submitAksiAction } from "@/app/admin/surat/_actions";
+import type { ApproveData, RejectData } from "@/app/admin/surat/_actions";
 import { LetterPreview } from "@/app/layanan-surat/_components/letter-preview";
 import type { KadesConfig } from "@/lib/surat/types";
 import type { QueueItem } from "@/app/admin/surat/page";
@@ -45,7 +46,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after a successful action so the parent updates status w/o reload. */
-  onActionDone: (id: string, status: string) => void;
+  onActionDone: (id: string, status: string, patch?: ApproveData | RejectData) => void;
   /** Current Kades config (nama/jabatan/NIP/TTE) for the preview signer. */
   kades?: KadesConfig | null;
 }
@@ -133,6 +134,7 @@ export function LetterDetailPanel({ item, open, onOpenChange, onActionDone, kade
         onActionDone(
           item.id,
           aksi === "setuju" ? "disetujui" : "ditolak",
+          res.data as ApproveData | RejectData | undefined,
         );
         onOpenChange(false);
         reset();

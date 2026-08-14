@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronRight, Eye, FileText, Loader2 } from "lucide-react"
 
 import { downloadLetterPdfAction } from "@/app/layanan-surat/_actions";
 import { LetterDetailPanel } from "@/app/admin/surat/_components/letter-detail-panel";
+import type { ApproveData, RejectData } from "@/app/admin/surat/_actions";
 import type { KadesConfig } from "@/lib/surat/types";
 import type { QueueItem } from "@/app/admin/surat/page";
 import { LetterStatusBadge } from "@/components/surat/letter-status-badge";
@@ -89,9 +90,19 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
 
   const openItem = items.find((i) => i.id === openId) ?? null;
 
-  function handleActionDone(id: string, status: string) {
+  function handleActionDone(
+    id: string,
+    status: string,
+    patch?: ApproveData | RejectData,
+  ) {
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, status } : i)),
+      prev.map((i) =>
+        i.id === id
+          ? patch
+            ? { ...i, ...patch }
+            : { ...i, status }
+          : i,
+      ),
     );
   }
 
