@@ -10,7 +10,7 @@
  * (no reload). A status filter sits above the table.
  */
 import { useState, useTransition } from "react";
-import { Eye, FileText, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, FileText, Loader2 } from "lucide-react";
 
 import { downloadLetterPdfAction } from "@/app/layanan-surat/_actions";
 import { LetterDetailPanel } from "@/app/admin/surat/_components/letter-detail-panel";
@@ -131,14 +131,6 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
         </p>
       </div> */}
 
-      {/* Retensi 7 hari — info kebijakan yang selalu tampil */}
-      <Alert>
-        <AlertDescription>
-          PDF surat yang disetujui hanya tersedia 7 hari sejak tanggal persetujuan.
-          Setelah itu masa unduh berakhir dan berkas dihapus otomatis.
-        </AlertDescription>
-      </Alert>
-
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -246,7 +238,7 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
 
       {/* Pagination + catatan retensi 7 hari */}
       {filtered.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="-mt-4 flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-muted-foreground">
               Menampilkan{" "}
@@ -256,22 +248,24 @@ export function ApprovalQueue({ items: initialItems, kades }: Props) {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="icon-xs"
                 disabled={currentPage <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="Halaman sebelumnya"
               >
-                Sebelumnya
+                <ChevronLeft className="size-3.5" strokeWidth={1.5} aria-hidden />
               </Button>
               <span className="tabular-data text-[13px] text-muted-foreground">
                 Hal {currentPage}/{pageCount}
               </span>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon-xs"
                 disabled={currentPage >= pageCount}
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                aria-label="Halaman berikutnya"
               >
-                Berikutnya
+                <ChevronRight className="size-3.5" strokeWidth={1.5} aria-hidden />
               </Button>
             </div>
           </div>
