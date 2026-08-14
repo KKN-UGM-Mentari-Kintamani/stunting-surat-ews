@@ -120,14 +120,16 @@ const styles = StyleSheet.create({
   ttdBlok: { alignItems: "flex-start" },
   tanggal: { fontSize: 12, lineHeight: 1, textAlign: "left" },
   ttdJabatan: { fontSize: 12, lineHeight: 1, textAlign: "left", marginTop: 2 },
-  ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2 },
-  ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 1 },
-  ttdImage: { width: 84, height: 50, objectFit: "contain", marginTop: 1 },
-  // Stempel lebih besar, menimpa tanda tangan serta jabatan/nama di bawahnya
+  // marginLeft negatif menggeser tanda tangan + nama sedikit ke kiri dari
+  // margin kanan, agar komposisi TTD tidak menempel terlalu rapat ke tepi.
+  ttdNama: { fontWeight: 700, textDecoration: "underline", fontSize: 12, textAlign: "left", marginTop: 2, marginLeft: -10 },
+  ttdNip: { fontSize: 10, lineHeight: 1, textAlign: "left", marginTop: 1, marginLeft: -10 },
+  ttdImage: { width: 84, height: 50, objectFit: "contain", marginTop: 1, marginLeft: -10 },
+  // Stempel lebih besar (84), menimpa tanda tangan serta jabatan/nama di bawahnya
   // (marginTop negatif; absolute react-pdf tetap menambah tinggi layout).
   // marginLeft negatif menggeser stempel ke kiri sehingga bagian kanan stempel
   // beririsan dengan bagian kiri tanda tangan — tidak menyatu di titik yang sama.
-  stempelImage: { width: 72, height: 72, objectFit: "contain", marginTop: -72, marginLeft: -36 },
+  stempelImage: { width: 84, height: 84, objectFit: "contain", marginTop: -84, marginLeft: -54 },
   kodeVerifikasi: {
     // Paling bawah halaman, terlepas dari tinggi isi.
     position: "absolute",
